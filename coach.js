@@ -27,14 +27,14 @@ window.go = go;
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     // Ikke logget inn
-    window.location.href = "../login.html";
+    window.location.href = "./fremside.html";
     return;
   }
 
   const snap = await getDoc(doc(db, "users", user.uid));
 
   if (!snap.exists()) {
-    window.location.href = "../login.html";
+    window.location.href = "./fremside.html";
     return;
   }
 
