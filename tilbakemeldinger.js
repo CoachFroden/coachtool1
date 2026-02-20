@@ -51,6 +51,9 @@ async function initUI() {
   await loadPlayers();
 }
 
+document.getElementById("playerSelect")
+  .addEventListener("change", loadPreviousFeedback);
+
 /* ==============================
    Last spillere
 ============================== */
@@ -72,6 +75,37 @@ async function loadPlayers() {
     option.textContent = p.name || p.email;
     select.appendChild(option);
   });
+}
+
+async function loadPreviousFeedback() {
+
+  const playerId = document.getElementById("playerSelect").value;
+  const textarea = document.getElementById("feedbackText");
+
+  textarea.value = "";
+  currentFeedbackDocId = null;
+
+  if (!playerId) return;
+
+  const q = query(
+    collection(db, "feedback"),
+    where("playerId", "==", playerId),
+    orderBy("createdAt", "desc")
+  );
+
+  const snap = await getDocs(q);
+
+  if (snap.empty) {
+    textarea.placeholder = "Ingen tidligere tilbakemeldinger.";
+    return;
+  }
+
+  // Hent siste feedback automatisk
+  const latest = snap.docs[0];
+  const data = latest.data();
+
+  textarea.value = data.editedText || data.feedbackText || "";
+  currentFeedbackDocId = latest.id;
 }
 
 /* ==============================
