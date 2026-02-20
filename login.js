@@ -46,7 +46,7 @@ loginBtn.onclick = async () => {
     }
 
     // OK → Coach
-    window.location.href = "index.html";
+    window.location.href = "fremside.html";
 
   } catch (err) {
     errorMsg.textContent = "Feil e-post eller passord.";
