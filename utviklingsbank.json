@@ -359,6 +359,24 @@
   ]
 },
 {
+  "id": "stopper_raskere_press_ballforer",
+  "title": "Raskere opp i press på ballfører",
+  "fase": ["forsvar"],
+  "utviklingsmaal": "Redusere tiden motstander har på ball sentralt ved å støte raskere og mer bestemt i press.",
+  "trening": [
+    "Reagere umiddelbart når pasning spilles inn sentralt.",
+    "Støte aggressivt når ballfører er rettvendt.",
+    "Avklare tydelig med stoppermakker hvem som støter og hvem som sikrer.",
+    "Jobbe med korte, eksplosive første steg frem i press."
+  ],
+  "kamp": [
+    "Motstander får mindre tid til å vende opp sentralt.",
+    "Du bryter eller forstyrrer flere pasninger i mellomrom.",
+    "Angrep stoppes tidligere før de utvikler seg.",
+    "Du presser med riktig timing uten å bli spilt av enkelt."
+  ]
+},
+{
   "id": "stopper_overgang_angrep",
   "title": "Rask fremdrift etter brudd",
   "fase": ["overgang_til_angrep"],
@@ -571,6 +589,25 @@
       "Du bidrar med måltrussel."
     ]
   },
+  {
+  "id": "kant_samspill_scanning_trekant",
+  "title": "Samspill, scanning og trekantspill",
+  "fase": ["angrep"],
+  "utviklingsmaal": "Forbedre orientering og samspill slik at du tar raskere valg og skaper flyt i kombinasjonsspill på kanten.",
+  "trening": [
+    "Scanne før mottak for å vite neste pasningsvalg.",
+    "Spille på maks to touch når medspiller er i bevegelse.",
+    "Søke trekantspill med back og sentral midtbane.",
+    "Løfte blikket raskt etter første touch.",
+    "Vurdere pasning før dribling når overtall ikke er tydelig."
+  ],
+  "kamp": [
+    "Du spiller raskere i kombinasjon med back.",
+    "Du reduserer unødvendige balltap i 1v1.",
+    "Laget skaper flere gjennombrudd via samspill på siden.",
+    "Du vender spillet når rommet ikke er på din side."
+  ]
+},
   {
     "id": "kant_defensiv_jobbing",
     "title": "Defensiv innsats på kant",
