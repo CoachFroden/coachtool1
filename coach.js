@@ -85,42 +85,46 @@ onAuthStateChanged(auth, async (user) => {
   // ==============================
   // Push-status i overskrift
   // ==============================
-  const header = document.getElementById("coachHeader");
-  if (!header) {
-    console.warn("Fant ikke #coachHeader i HTML.");
-    return;
+const header = document.getElementById("coachHeader");
+const statusText = document.getElementById("pushStatusText");
+
+function setHeaderColor(color) {
+  header.style.setProperty("color", color, "important");
+}
+
+function updateHeaderStatus() {
+  const permission = Notification.permission;
+
+  if (permission === "granted") {
+    header.textContent = "Coach Dashboard";
+    setHeaderColor("#2ecc71");
+    statusText.textContent = "Varsler aktivert";
+    header.style.cursor = "default";
+    header.onclick = null;
   }
 
-  function setHeaderColor(color) {
-    // tåler CSS som overstyrer
-    header.style.setProperty("color", color, "important");
+  else if (permission === "denied") {
+    header.textContent = "Coach Dashboard";
+    setHeaderColor("#e74c3c");
+    statusText.textContent = "Varsler blokkert i nettleserinnstillinger";
+    header.style.cursor = "default";
+    header.onclick = null;
   }
 
-  function updateHeaderStatus() {
-    const permission = Notification.permission;
+  else {
+    header.textContent = "Coach Dashboard";
+    setHeaderColor("#e74c3c");
+    statusText.textContent = "Klikk her for å aktivere varsler";
+    header.style.cursor = "pointer";
 
-    if (permission === "granted") {
-      header.textContent = "Coach Dashboard – Varsler aktivert";
-      setHeaderColor("#2ecc71");
-      header.style.cursor = "default";
-      header.onclick = null;
-    } else if (permission === "denied") {
-      header.textContent = "Coach Dashboard – Varsler blokkert";
-      setHeaderColor("#e74c3c");
-      header.style.cursor = "default";
-      header.onclick = null;
-    } else {
-      header.textContent = "Coach Dashboard – Aktiver varsler";
-      setHeaderColor("#e74c3c");
-      header.style.cursor = "pointer";
-      header.onclick = async () => {
-        await setupCoachPush(user);
-        updateHeaderStatus();
-      };
-    }
+    header.onclick = async () => {
+      await setupCoachPush(user);
+      updateHeaderStatus();
+    };
   }
+}
 
-  updateHeaderStatus();
+updateHeaderStatus();
 
 }); // ✅ VIKTIG: lukker onAuthStateChanged
 
