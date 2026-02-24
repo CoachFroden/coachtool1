@@ -536,3 +536,30 @@ html, body {
   width: 100%;
   max-width: 100%;
 }
+
+/* STOPP SELECT FRA Å SPRENGE BREDDEN */
+.playerSelect {
+  min-width: 0;
+  width: 100%;
+}
+
+.playerSelect option {
+  white-space: normal;
+}
+
+/* STOPP TABELL FRA Å SKAPE HORIZONTAL SCROLL */
+.statsTable {
+  width: 100%;
+  max-width: 100%;
+}
+
+.statsTable th,
+.statsTable td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wrap {
+  overflow-x: hidden;
+}
