@@ -499,3 +499,40 @@ h2 { margin: 0 0 8px; font-size: 18px; }
 .typeFilterBtn.active {
   color: #60a5fa; /* samme subtile blå */
 }
+
+/* =========================
+   MOBIL FIX – OVERSIKT
+========================= */
+
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.wrap {
+  max-width: 100%;
+  padding: 16px;
+}
+
+.grid {
+  grid-template-columns: 1fr;
+}
+
+.card {
+  padding: 12px;
+}
+
+.statsTable {
+  font-size: 0.75rem;
+}
+
+.statsTable th,
+.statsTable td {
+  padding: 6px 4px;
+}
+
+/* Sikre at select aldri stikker ut */
+.playerSelect {
+  width: 100%;
+  max-width: 100%;
+}
