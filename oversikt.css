@@ -563,3 +563,42 @@ html, body {
 .wrap {
   overflow-x: hidden;
 }
+
+/* =========================
+   MOBIL: HINDRE "BREDE KORT"
+========================= */
+@media (max-width: 520px) {
+
+  /* Filter-rader må kunne bryte linje */
+  .statsTypeRow {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  /* Dette treffer "Spilte kamper"-filteret som ligger i en .item med en flex-rad inni */
+  .item > div {
+    flex-wrap: wrap;
+    gap: 12px !important;
+  }
+
+  /* Gjør knappene litt mer kompakte */
+  .statsTypeBtn,
+  .typeFilterBtn {
+    font-size: 0.85rem;
+    padding: 2px 0;
+  }
+
+  /* Sikre at lange ord/tekst ikke sprenger kort */
+  .itemTitle,
+  .itemSub,
+  .card,
+  .item {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* Sikkerhetsnett: aldri bredere enn viewport */
+  .wrap, .card, .item {
+    max-width: 100%;
+  }
+}
