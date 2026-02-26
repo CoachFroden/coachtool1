@@ -1426,3 +1426,8 @@ document.addEventListener("click", (e) => {
     }
   }
 });
+
+document.getElementById("openMatchAppBtn")
+  ?.addEventListener("click", () => {
+    window.location.href = "kamp.html";
+  });

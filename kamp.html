@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<link rel="manifest" href="manifest.json">
+
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+
+<meta name="color-scheme" content="dark">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Kampregistrering</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- KAMPHEADER -->
+  <header id="match-header">
+  <h1 id="app-title">Kampregistrering</h1>
+
+  <div class="teams">
+    <input
+  id="homeTeam"
+  type="text"
+  value="Samnanger"
+  placeholder="Lag"
+  readonly
+/>
+<span class="vs">–</span>
+<input
+  id="awayTeam"
+  type="text"
+  placeholder="Motstander"
+/>
+
+  </div>
+ 
+<div id="preMatchMeta">
+<div class="match-meta-card">
+  <div class="match-meta">
+    <input id="matchDate" type="date" />
+    <input id="matchTime" type="time" />
+    <select id="halfLength">
+  <option value="35" selected>2 × 35 min</option>
+  <option value="1">2 × 1 min</option>
+  <option value="40">2 × 40 min</option>
+  <option value="45">2 × 45 min</option>
+</select>
+
+  <select id="matchType">
+    <option value="league">Seriekamp</option>
+    <option value="cup">Cupkamp</option>
+    <option value="friendly">Treningskamp</option>
+  </select>
+
+  <button id="venueToggleBtn" class="venue-toggle home">
+    Hjemmekamp
+  </button>
+
+</div>
+</div>
+</div>
+
+</header>
+
+  <!-- KAMPKLOKKE -->
+  <section id="clock-section">
+  <div id="game-clock">00:00</div>
+
+  <div id="scoreboard">
+    <span id="ourScore">0</span>
+    <span class="score-separator">–</span>
+    <span id="theirScore">0</span>
+  </div>
+
+  <div id="period-indicator">1. omgang</div>
+</section>
+
+  <!-- KAMPKONTROLLER -->
+  <section id="controls">
+    <button id="startBtn">Start</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="resumeBtn">Gjenoppta</button>
+    <button id="endBtn">Slutt</button>
+	<button id="squadBtn">Spillertropp / startellever</button>
+  </section>
+  
+<div class="playing-time-wrapper">
+  <button id="togglePlayingTimeBtn" class="secondary-btn">
+    Vis spilletid
+  </button>
+
+  <div id="playingTimePanel" class="playing-time hidden">
+    <ul id="playingTimeList"></ul>
+  </div>
+</div>
+
+  <!-- HENDELSER -->
+  <section id="events">
+
+    <div class="team-events">
+      <h3 id="homeTeamLabel">Hjemmelag</h3>
+      <button class="goalBtn" data-team="home">Mål</button>
+    </div>
+
+    <div class="team-events">
+      <h3 id="awayTeamLabel">Bortelag</h3>
+      <button class="goalBtn" data-team="away">Mål</button>
+    </div>
+
+  </section>
+
+  <!-- ANDRE HENDELSER -->
+  <section id="extra-events">
+    <button id="subBtn">Bytte</button>
+    <button id="cardBtn">Kort</button>
+  </section>
+
+  <!-- HENDELSESLOGG -->
+  <section id="event-log">
+    <h3>Hendelser</h3>
+    <ul id="eventList"></ul>
+  </section>
+ <div class="logout-wrapper">
+  <button id="backBtn" class="ghost-btn">← Til oversikt</button>
+  <button id="logoutBtn" class="ghost-btn">Logg ut</button>
+</div>
+
+  <!-- MODAL: KORT -->
+<div class="modal hidden" id="cardModal">
+  <div class="modal-content">
+    <h3>Registrer kort</h3>
+
+    <!-- Lag -->
+   <div class="modal-section card-team-row">
+  <label class="radio-pill">
+    <input type="radio" name="cardTeam" value="home" checked />
+    Samnanger
+  </label>
+  <label class="radio-pill">
+    <input type="radio" name="cardTeam" value="away" />
+    Motstander
+  </label>
+</div>
+
+
+    <!-- Hjemmelag -->
+    <div class="modal-section" id="cardHomeWrapper">
+  <select id="cardPlayer">
+    <option value="">Velg spiller</option>
+  </select>
+</div>
+
+
+    <!-- Motstander -->
+    <div class="modal-section hidden" id="cardAwayWrapper">
+      <label>
+        Spiller (valgfritt)
+        <input
+          type="text"
+          id="cardOpponentInput"
+          placeholder="Navn eller nr"
+        />
+      </label>
+    </div>
+
+    <!-- Korttype -->
+    <div class="card-types">
+      <label>
+        <input type="radio" name="cardType" value="yellow" />
+        <span>🟨 Gult</span>
+      </label>
+      <label>
+        <input type="radio" name="cardType" value="red" />
+        <span>🟥 Rødt</span>
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button id="cancelCardBtn">Avbryt</button>
+      <button id="confirmCardBtn">Registrer kort</button>
+    </div>
+  </div>
+</div>
+
+
+   
+   <!-- MÅL-MODAL -->
+<div id="goalModal" class="modal hidden">
+  <div class="modal-content">
+
+    <h3>Registrer mål</h3>
+
+    <!-- Tid -->
+    <div class="modal-section">
+      <label>
+        <input type="radio" name="goalTimeType" value="now" checked>
+        Mål nå
+      </label>
+
+      <label>
+        <input type="radio" name="goalTimeType" value="manual">
+        Manuell tid
+      </label>
+
+      <input
+  type="text"
+  id="manualGoalTime"
+  placeholder="minutt (f.eks 12)"
+  disabled
+/>
+    </div>
+
+    <!-- Spiller -->
+    <div class="modal-section" id="homeScorerWrapper">
+      <label for="goalScorer">Målscorer</label>
+      <select id="goalScorer">
+        <option value="">Velg spiller</option>
+      </select>
+    </div>
+
+	
+	<!-- Spiller (bortelag – valgfritt) -->
+<div class="modal-section hidden" id="opponentScorerWrapper">
+  <label for="opponentScorerInput">
+    Målscorer (valgfritt)
+  </label>
+  <input
+    type="text"
+    id="opponentScorerInput"
+    placeholder="Navn eller draktnr"
+  />
+</div>
+
+    <!-- Handlinger -->
+    <div class="modal-actions">
+      <button id="cancelGoalBtn">Avbryt</button>
+      <button id="confirmGoalBtn">Registrer mål</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: BYTTE -->
+<div class="modal hidden" id="subModal">
+  <div class="modal-content">
+    <h3>Spillerbytte</h3>
+
+    <div class="modal-section">
+      <label for="subOutSelect">Spiller ut</label>
+      <select id="subOutSelect"></select>
+    </div>
+
+    <div class="modal-section">
+      <label for="subInSelect">Spiller inn</label>
+      <select id="subInSelect"></select>
+    </div>
+
+    <div class="modal-actions">
+      <button id="cancelSubBtn">Avbryt</button>
+      <button id="confirmSubBtn">Registrer bytte</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SPILLERTROPP -->
+<div id="squadModal" class="modal hidden">
+  <div class="modal-content">
+    <h3>Spillertropp</h3>
+     <p id="starterCounter" style="text-align:center; font-size:0.8rem; opacity:0.7; margin-bottom:8px;">
+  Startere: 0 / 11
+</p>
+    <ul id="squadList"></ul>
+
+    <div class="modal-actions">
+      <button id="cancelSquadBtn">Avbryt</button>
+      <button id="saveSquadBtn">Lagre</button>
+    </div>
+  </div>
+</div>
+
+ <script type="module" src="app.js"></script>
+
+</body>
+</html>

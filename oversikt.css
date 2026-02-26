@@ -2,8 +2,19 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  background: #0b1220;
   color: #e5e7eb;
+
+  background:
+    radial-gradient(circle at 20% 20%, rgba(37,99,235,0.25), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(16,185,129,0.18), transparent 40%),
+    #030712;
+
+  animation: bgMove 12s ease-in-out infinite alternate;
+}
+
+@keyframes bgMove {
+  0% { background-position: 0% 0%, 100% 100%; }
+  100% { background-position: 10% 5%, 90% 95%; }
 }
 
 .wrap { max-width: 1100px; margin: 0 auto; padding: 22px; }
@@ -16,7 +27,13 @@ body {
   margin-bottom: 18px;
 }
 
-h1 { margin: 0; font-size: 28px; }
+h1 {
+  font-size: 32px;
+  letter-spacing: -0.5px;
+  background: linear-gradient(90deg, #60a5fa, #34d399);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 .meta { margin-top: 6px; opacity: .85; display: flex; gap: 10px; flex-wrap: wrap; }
 .meta span { background: rgba(255,255,255,.06); padding: 6px 10px; border-radius: 999px; font-size: 13px; }
 
@@ -28,10 +45,15 @@ h1 { margin: 0; font-size: 28px; }
 }
 
 .card {
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 14px;
-  padding: 14px;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.35),
+    inset 0 0 0 1px rgba(255,255,255,0.04);
 }
 
 h2 { margin: 0 0 8px; font-size: 18px; }
@@ -92,21 +114,26 @@ h2 { margin: 0 0 8px; font-size: 18px; }
   margin: 10px 0 12px;
 }
 
-.segBtn{
-  flex:1;
-  padding:10px 12px;
-  border-radius: 12px;
+.segBtn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 14px;
   border: 1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.18);
-  color:#e5e7eb;
-  cursor:pointer;
-  font-weight: 650;
+  background: rgba(255,255,255,0.04);
+  color: #e5e7eb;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.2s ease;
 }
 
-.segBtn.isActive{
-  background:#2563eb;
-  border-color:#2563eb;
-  color:white;
+.segBtn:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.segBtn.isActive {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border-color: transparent;
+  box-shadow: 0 8px 18px rgba(37,99,235,.35);
 }
 
 .panel{ margin-top: 10px; }
@@ -505,8 +532,9 @@ h2 { margin: 0 0 8px; font-size: 18px; }
 ========================= */
 
 .wrap {
-  max-width: 100%;
-  padding: 16px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px 18px 60px;
 }
 
 .grid {
@@ -626,4 +654,81 @@ h2 { margin: 0 0 8px; font-size: 18px; }
 
 .miniBtn:hover{
   background: rgba(255,255,255,.12);
+}
+
+.heroBtn {
+  width: 100%;
+  padding: 15px;
+  border-radius: 16px;
+  border: none;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+
+  box-shadow: 0 10px 25px rgba(34,197,94,0.4);
+  transition: all 0.2s ease;
+}
+
+.heroBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(34,197,94,0.5);
+}
+
+.item {
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.item:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.08);
+}
+
+@media (max-width: 520px) {
+
+  .segmented {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .segBtn {
+    width: 100%;
+    writing-mode: horizontal-tb !important;
+    transform: none !important;
+    padding: 14px;
+    font-size: 15px;
+    border-radius: 14px;
+  }
+
+}
+
+.mainTitle {
+  text-align: center;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  margin: 18px 0 26px;
+  color: #ffffff;
+
+  background: linear-gradient(120deg, #60a5fa, #34d399, #22c55e);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  animation: gradientMove 6s ease infinite;
+}
+
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@media (max-width: 520px) {
+  .mainTitle {
+    font-size: 24px;
+    margin: 14px 0 20px;
+  }
 }
