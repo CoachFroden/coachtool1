@@ -119,6 +119,7 @@ function updateHeaderStatus() {
     header.onclick = async () => {
       await setupCoachPush(user);
       updateHeaderStatus();
+	  alert("Notification permission: " + Notification.permission);
     };
   }
 }
