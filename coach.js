@@ -34,7 +34,7 @@ async function setupCoachPush(user) {
   try {
     if (!("serviceWorker" in navigator)) return;
 
-const swReg = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
+const swReg = await navigator.serviceWorker.getRegistration("/coachtool/")
   || await navigator.serviceWorker.register("/coachtool4/firebase-messaging-sw.js");
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return;
