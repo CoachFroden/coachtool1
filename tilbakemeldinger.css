@@ -246,3 +246,72 @@ body {
 .feedback-sub {
   color: #94a3b8;
 }
+
+#feedbackHistory{
+  margin-top:20px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.feedback-history-item{
+  padding:10px 12px;
+  border-radius:10px;
+  background:#0f172a;
+  border:1px solid rgba(255,255,255,0.08);
+  cursor:pointer;
+}
+
+.feedback-history-item:hover{
+  background:#1e293b;
+}
+
+.reflection-preview{
+
+  margin-bottom:16px;
+  padding:14px 16px;
+
+  background:#0f172a;
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:12px;
+
+  font-size:0.9rem;
+  line-height:1.5;
+
+}
+
+.reflection-preview strong{
+  display:block;
+  margin-bottom:6px;
+}
+
+.reflection-preview em{
+  display:block;
+  margin-top:8px;
+  opacity:0.9;
+}
+
+.preview-title{
+  display:block;
+  font-weight:600;
+  margin-bottom:6px;
+}
+
+.preview-meta{
+  font-size:0.85rem;
+  opacity:0.8;
+  margin-bottom:8px;
+}
+
+.preview-section{
+  margin-bottom:8px;
+  line-height:1.35;
+}
+
+.preview-section span{
+  display:block;
+  font-size:0.8rem;
+  font-weight:600;
+  color:#94a3b8;   /* dus blågrå */
+  margin-bottom:2px;
+}

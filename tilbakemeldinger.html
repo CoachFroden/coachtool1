@@ -21,6 +21,10 @@
   <select id="playerSelect">
     <option value="">Velg spiller</option>
   </select>
+  
+  <select id="reflectionSelect">
+  <option value="">Velg refleksjon</option>
+</select>
 
 <select id="feedbackType">
   <option value="weekly">Ukentlig fokus</option>
@@ -28,19 +32,21 @@
   <option value="season">Sesongrapport</option>
 </select>
 
-  <button id="generateBtn">Generer AI-tilbakemelding</button>
+  <button id="generateBtn" disabled>Generer AI-tilbakemelding</button>
 
 </section>
 
     <section class="feedback-editor">
-      <textarea id="feedbackText" placeholder="AI-tilbakemelding vises her..."></textarea>
+      <div id="reflectionPreview" class="reflection-preview"></div>
+
+<textarea id="feedbackText" placeholder="AI-tilbakemelding vises her..."></textarea>
 
       <div class="feedback-actions">
         <button id="saveBtn">Lagre</button>
         <button id="sendBtn">Marker som sendt</button>
       </div>
     </section>
-
+	
    <button id="backBtn" class="back-btn">Tilbake</button>
 
   </main>

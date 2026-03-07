@@ -22,6 +22,8 @@ import { functions } from "./firebase-refleksjon.js";
 
 let currentFeedbackDocId = null;
 
+const reflectionSelect = document.getElementById("reflectionSelect");
+
 /* ==============================
    Auth – kun coach
 ============================== */
@@ -78,6 +80,8 @@ async function loadPlayers() {
 }
 
 async function loadPreviousFeedback() {
+	
+reflectionSelect.innerHTML = `<option value="">Velg refleksjon</option>`;
 
   const playerId = document.getElementById("playerSelect").value;
   const textarea = document.getElementById("feedbackText");
@@ -86,41 +90,215 @@ async function loadPreviousFeedback() {
   currentFeedbackDocId = null;
 
   if (!playerId) return;
-
-const type = document.getElementById("feedbackType").value;
-
-const q = query(
-  collection(db, "feedback"),
-  where("playerId", "==", playerId),
-  where("type", "==", type),
-  orderBy("createdAt", "desc")
+  
+  // hent refleksjoner
+const reflectionsSnap = await getDocs(
+  collection(db, "refleksjoner", playerId, "entries")
 );
 
-  const snap = await getDocs(q);
+const feedbackSnap = await getDocs(
+  query(
+    collection(db, "feedback"),
+    where("playerId", "==", playerId)
+  )
+);
 
-  if (snap.empty) {
-    textarea.placeholder = "Ingen tidligere tilbakemeldinger.";
-    return;
+const feedbackReflectionIds = new Set(
+  feedbackSnap.docs.map(d => d.data().reflectionId)
+);
+
+const reflections = reflectionsSnap.docs
+  .map(d => ({ id: d.id, ...d.data() }))
+  .sort((a, b) => {
+
+    if (a.year !== b.year) return b.year - a.year;
+    return b.week - a.week;
+
+  });
+
+let currentWeek = null;
+
+const dayMap = {
+  Mon: "Mandag",
+  Tue: "Tirsdag",
+  Wed: "Onsdag",
+  Thu: "Torsdag",
+  Fri: "Fredag",
+  Sat: "Lørdag",
+  Sun: "Søndag"
+};
+
+for (const data of reflections) {
+	
+let statusIcon = "⚪";
+
+const feedbackDoc = feedbackSnap.docs.find(d => {
+  return d.data().reflectionId === data.id;
+});
+
+if (feedbackDoc) {
+
+  const status = feedbackDoc.data().status;
+
+  if (status === "sent") {
+    statusIcon = "🟢";
+  } else {
+    statusIcon = "🟡";
   }
 
-  // Hent siste feedback automatisk
-  const latest = snap.docs[0];
-  const data = latest.data();
-
-  textarea.value = data.editedText || data.feedbackText || "";
-  currentFeedbackDocId = latest.id;
 }
 
+  if (currentWeek !== data.week) {
+
+    const weekHeader = document.createElement("option");
+    weekHeader.textContent = `— Uke ${data.week} —`;
+    weekHeader.disabled = true;
+
+    reflectionSelect.appendChild(weekHeader);
+
+    currentWeek = data.week;
+  }
+
+  const option = document.createElement("option");
+
+  const typeIcon = data.type === "match" ? "🏆 Kamp" : "🔵 ⚽ Trening";
+
+  option.value = data.id;
+
+const dayText = dayMap[data.day] || data.day;
+const typeText = data.type === "match" ? "Kamp" : "Trening";
+
+option.textContent =
+  `${statusIcon} ${typeText} – ${dayText}`;
+
+  reflectionSelect.appendChild(option);
+
+}
+}
 /* ==============================
    Generer tilbakemelding
 ============================== */
 
 const generateBtn = document.getElementById("generateBtn");
 
+reflectionSelect.addEventListener("change", async () => {
+
+  const feedbackType = document.getElementById("feedbackType");
+
+  if (reflectionSelect.value) {
+	  
+	  const preview = document.getElementById("reflectionPreview");
+
+const reflectionDoc = await getDoc(
+  doc(
+    db,
+    "refleksjoner",
+    document.getElementById("playerSelect").value,
+    "entries",
+    reflectionSelect.value
+  )
+);
+
+
+const reflectionData = reflectionDoc.data();
+
+let feedbackQuery = query(
+  collection(db, "feedback"),
+  where("playerId", "==", document.getElementById("playerSelect").value),
+  where("reflectionId", "==", reflectionSelect.value)
+);
+
+let feedbackSnap = await getDocs(feedbackQuery);
+
+// fallback for gamle feedbacks
+if (feedbackSnap.empty) {
+
+  feedbackQuery = query(
+    collection(db, "feedback"),
+    where("playerId", "==", document.getElementById("playerSelect").value),
+    where("week", "==", reflectionData.week),
+    where("type", "==", reflectionData.type)
+  );
+
+  feedbackSnap = await getDocs(feedbackQuery);
+
+}
+
+if (!feedbackSnap.empty) {
+
+  const data = feedbackSnap.docs[0].data();
+
+  textarea.value = data.editedText || data.feedbackText || "";
+
+  currentFeedbackDocId = feedbackSnap.docs[0].id;
+
+} else {
+
+  textarea.value = "";
+  currentFeedbackDocId = null;
+
+}
+
+if (reflectionDoc.exists()) {
+
+  const data = reflectionDoc.data();
+
+const dayMap = {
+  Mon: "Mandag",
+  Tue: "Tirsdag",
+  Wed: "Onsdag",
+  Thu: "Torsdag",
+  Fri: "Fredag",
+  Sat: "Lørdag",
+  Sun: "Søndag"
+};
+
+const dayText = dayMap[data.day] || data.day;
+
+preview.innerHTML = `
+<strong class="preview-title">
+${data.type === "match" ? "🏆 Kamp" : "⚽ Trening"} – ${dayText} (uke ${data.week})
+</strong>
+
+<div class="preview-meta">
+Energi: ${data.energy || "-"} | Innsats: ${data.effort || "-"}
+</div>
+
+<div class="preview-section">
+<span>Fornøyd med</span>
+${data.goodThing || "-"}
+</div>
+
+<div class="preview-section">
+<span>Neste uke</span>
+${data.improveThing || "-"}
+</div>
+
+<div class="preview-section">
+<span>Til trener</span>
+${data.coachNote || "-"}
+</div>
+`;
+}
+
+    generateBtn.disabled = false;
+
+    // refleksjon = ukentlig
+    feedbackType.value = "weekly";
+
+  } else {
+
+    generateBtn.disabled = true;
+
+  }
+
+});
+
 generateBtn.addEventListener("click", async () => {
 
   const playerId = document.getElementById("playerSelect").value;
   const type = document.getElementById("feedbackType").value;
+  const reflectionId = document.getElementById("reflectionSelect").value;
   console.log("TYPE VALGT:", type);
 
 
@@ -134,11 +312,12 @@ generateBtn.addEventListener("click", async () => {
     generateBtn.textContent = "Genererer...";
 
 let result;
+const selectedReflectionId = reflectionId;
 
 if (type === "weekly") {
 
   const fn = httpsCallable(functions, "generatePlayerFeedback");
-  result = await fn({ playerId, type: "weekly" });
+  result = await fn({ playerId, reflectionId, type: "weekly" });
 
 }
 
@@ -170,11 +349,26 @@ if (type === "season") {
 
 }
 	
-	const textarea = document.querySelector("textarea");
+	const textarea = document.getElementById("feedbackText");
 textarea.value = result.data.feedback;
 
     console.log("Feedback generert:", result.data.feedbackId);
 	currentFeedbackDocId = result.data.feedbackId;
+	await updateDoc(
+  doc(db, "feedback", currentFeedbackDocId),
+  { reflectionId: selectedReflectionId }
+);
+
+await updateDoc(
+  doc(
+    db,
+    "refleksjoner",
+    playerId,
+    "entries",
+    selectedReflectionId
+  ),
+  { feedbackId: currentFeedbackDocId }
+);
 
     alert("AI-tilbakemelding generert.");
 
