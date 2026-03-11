@@ -17,6 +17,52 @@ import {
   getToken
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-messaging.js";
 
+function getWeekNumber() {
+
+  const date = new Date();
+  const firstJan = new Date(date.getFullYear(),0,1);
+
+  const days = Math.floor((date - firstJan) / (24*60*60*1000));
+
+  return Math.ceil((date.getDay()+1+days)/7);
+
+}
+
+const currentWeek = getWeekNumber();
+
+const weekSelect = document.getElementById("weekSelect");
+
+if(weekSelect){
+
+  const firstOption = document.createElement("option");
+  firstOption.text = "Velg uke";
+  firstOption.value = "";
+  weekSelect.appendChild(firstOption);
+
+  for(let i = 0; i < 8; i++){
+
+    const option = document.createElement("option");
+
+    let weekNumber = currentWeek + i;
+
+    if(i === 0){
+      option.text = "Denne uken";
+    }
+    else if(i === 1){
+      option.text = "Neste uke";
+    }
+    else{
+      option.text = "Uke " + weekNumber;
+    }
+
+    option.value = "week" + weekNumber;
+
+    weekSelect.appendChild(option);
+
+  }
+
+}
+
 /* ==============================
    Navigasjon
 ============================== */
@@ -87,6 +133,8 @@ onAuthStateChanged(auth, async (user) => {
 const header = document.getElementById("coachHeader");
 const statusText = document.getElementById("pushStatusText");
 
+if (!header || !statusText) return;
+
 function setHeaderColor(color) {
   header.style.setProperty("color", color, "important");
 }
@@ -127,6 +175,73 @@ function updateHeaderStatus() {
 updateHeaderStatus();
 
 }); // ✅ VIKTIG: lukker onAuthStateChanged
+
+window.saveExercises = async function(){
+
+  const focus = document.getElementById("focusInput").value;
+
+  const weekChoice = document.getElementById("weekSelect").value;
+  const weekNumber = weekChoice.replace("week","");
+
+  const titles = document.querySelectorAll(".exerciseTitle");
+  const videos = document.querySelectorAll(".exerciseVideo");
+
+  const exercises = [];
+
+  titles.forEach((title,i)=>{
+
+    if(title.value !== ""){
+
+      exercises.push({
+        title: title.value,
+        video: "ovelser/" + videos[i].value
+      });
+
+    }
+
+  });
+
+  await setDoc(doc(db, "weeklyExercises", "week"+weekNumber), {
+
+    focus: focus,
+    exercises: exercises
+
+  });
+
+  alert("Ukens øvelser lagret!");
+
+}
+
+window.addExercise = function(){
+
+  const container = document.getElementById("exerciseContainer");
+
+  const div = document.createElement("div");
+
+  div.className = "exercise-row";
+
+  div.innerHTML = `
+    <input placeholder="Tittel på øvelse" class="exerciseTitle">
+
+    <select class="exerciseVideo">
+      <option value="kantlop-innlegg.mp4">Kantløp innlegg</option>
+      <option value="kantoverlapp.mp4">Kantoverlapp</option>
+    </select>
+  `;
+
+  container.appendChild(div);
+
+}
+
+window.removeExercise = function () {
+
+  const container = document.getElementById("exerciseContainer");
+
+  if (container.children.length > 0) {
+    container.removeChild(container.lastElementChild);
+  }
+
+};
 
 /* ==============================
    Logout

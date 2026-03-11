@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ukens øvelser</title>
+
+<link rel="stylesheet" href="ukens-ovelser.css">
+
+</head>
+
+<body>
+
+
+<div class="container">
+
+
+
+<h1>⚽ Ukens øvelser</h1>
+
+<div class="card">
+
+<h3>Velg uke</h3>
+<select id="weekSelect"></select>
+
+<label>Ukens fokus</label>
+<input id="focusInput" placeholder="f.eks Angrep via kant">
+
+<h3>Øvelser</h3>
+
+<div id="exerciseContainer"></div>
+
+<button onclick="addExercise()">+ Legg til øvelse</button>
+<button onclick="removeExercise()">− Fjern øvelse</button>
+
+<br><br>
+
+<button onclick="saveExercises()">Lagre</button>
+
+</div>
+
+<button onclick="history.back()">← Tilbake</button>
+
+</div>
+
+<script type="module" src="coach.js"></script>
+
+</body>
+</html>
