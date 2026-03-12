@@ -317,7 +317,7 @@ const selectedReflectionId = reflectionId;
 if (type === "weekly") {
 
   const fn = httpsCallable(functions, "generatePlayerFeedback");
-  result = await fn({ playerId, reflectionId, type: "weekly" });
+  result = await fn({ playerId, entryId: reflectionId, type: "weekly" });
 
 }
 
