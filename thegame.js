@@ -155,8 +155,10 @@ let html = "";
 html += `<div class="categoryFilters">`;
 
 // 🔹 KUN kategorier her
-Object.keys(categoryCounts).forEach(cat => {
-  html += `<button onclick="filterExercises('${name}', '${cat}')">${cat}</button>`;
+Object.entries(categoryCounts).forEach(([cat, count]) => {
+  html += `<button onclick="filterExercises('${name}', '${cat}')">
+    ${cat} (${count})
+  </button>`;
 });
 
 html += `</div>`;
