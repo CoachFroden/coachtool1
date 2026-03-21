@@ -1,0 +1,189 @@
+body{
+  margin:0;
+  font-family:system-ui;
+  background:url("thegame.png") center/cover no-repeat fixed;
+  color:white;
+}
+
+.container{
+  max-width:400px;
+  margin:0 auto;
+  padding:20px;
+  padding-top:60px;
+}
+
+/* tilbake knapp */
+
+.backBtn{
+  position:fixed;
+  top:15px;
+  left:15px;
+
+  padding:8px 14px;
+  border:none;
+  border-radius:12px;
+
+  background:rgba(0,0,0,0.5);
+  color:white;
+
+  backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,0.1);
+
+  cursor:pointer;
+  z-index:10;
+}
+
+/* spillerkort */
+
+.playerCard{
+  background:rgba(0,0,0,0.5);
+  backdrop-filter:blur(10px);
+  border-radius:16px;
+  padding:14px;
+  margin-bottom:15px;
+  border:1px solid rgba(255,255,255,0.1);
+}
+
+/* navn */
+
+.playerName{
+  font-weight:bold;
+  font-size:16px;
+  margin-bottom:8px;
+  color:#60a5fa;
+  cursor:pointer;
+}
+
+/* øvelser */
+
+.exercise{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:6px 0;
+  font-size:14px;
+  opacity:0.9;
+}
+
+.left{
+  flex:1;
+}
+
+.right{
+  opacity:0.8;
+  font-size:13px;
+  white-space:nowrap;
+}
+
+/* favoritt */
+
+.favorite{
+  color:#facc15;
+  font-weight:600;
+}
+
+/* separator under favoritt */
+
+.exercise:first-child{
+  border-bottom:1px solid rgba(255,255,255,0.1);
+  padding-bottom:6px;
+  margin-bottom:6px;
+}
+
+/* warning */
+
+.warning{
+  color:#f87171;
+  margin-top:6px;
+}
+
+/* vurdering */
+
+.good{
+  color:#4ade80;
+  margin-top:8px;
+}
+
+.medium{
+  color:#fbbf24;
+  margin-top:8px;
+}
+
+/* title */
+
+.title{
+  text-align:center;
+  margin-top:20px;
+  margin-bottom:20px;
+  font-size:28px;
+  font-weight:bold;
+}
+
+/* details */
+
+.playerDetails{
+  margin-top:8px;
+  padding-top:8px;
+  border-top:1px solid rgba(255,255,255,0.1);
+}
+
+.categoryBox{
+  margin-bottom:10px;
+  padding-bottom:8px;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+}
+
+.categoryRow{
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+  opacity:0.8;
+}
+
+.categoryFilters{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:6px;
+
+  margin-bottom:6px;
+}
+
+.categoryFilters button{
+  width:100%;
+  text-align:center;
+
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.1);
+
+  color:white;
+  padding:6px 8px;
+
+  border-radius:10px;
+  font-size:12px;
+  cursor:pointer;
+}
+
+/* wrapper for "alle" */
+.allWrapper{
+  display:flex;
+  justify-content:center;
+
+  margin-bottom:10px;
+  padding-bottom:8px;
+
+  border-bottom:1px solid rgba(255,255,255,0.15);
+}
+
+/* egen stil for alle */
+.allBtn{
+  background:rgba(255,255,255,0.15);
+  border:1px solid rgba(255,255,255,0.2);
+
+  color:white;
+  padding:6px 14px;
+
+  border-radius:12px;
+  font-size:12px;
+
+  cursor:pointer;
+}
