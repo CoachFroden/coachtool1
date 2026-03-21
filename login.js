@@ -59,27 +59,25 @@ registerBtn.onclick = async () => {
   if (pass !== pass2) return setError("Passordene er ikke like.");
   if (pass.length < 6) return setError("Passord må være minst 6 tegn.");
 
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+try {
+  const cred = await createUserWithEmailAndPassword(auth, email, pass);
 
-    // Send verifiseringslink på e-post
-    await sendEmailVerification(cred.user);
+  await sendEmailVerification(cred.user);
 
-    // Lag/oppdater Firestore-profil (rolle settes til assistantCoach)
-    await setDoc(doc(db, "users", cred.user.uid), {
-  email,
-  role: "assistantCoach",
-  approved: false,   // 🔥 VIKTIG
-  createdAt: serverTimestamp()
-});
+  await setDoc(doc(db, "users", cred.user.uid), {
+    email,
+    role: "assistantCoach",
+    approved: false,
+    createdAt: serverTimestamp()
+  });
 
-    setInfo("Registrert! Sjekk e-post og trykk på verifiseringslinken før du logger inn.");
-    await signOut(auth);
+  setInfo("Registrert! Sjekk e-post og trykk på verifiseringslinken før du logger inn.");
+  await signOut(auth);
 
-  } catch (err) {
-    // typisk: email-already-in-use, invalid-email, weak-password
-    setError("Kunne ikke registrere. Sjekk e-post/passord eller om brukeren finnes fra før.");
-  }
+} catch (err) {
+  console.log(err);
+  setError(err.message);
+}
 };
 
 // LOGIN
@@ -94,6 +92,19 @@ loginBtn.onclick = async () => {
 
   try {
     const cred = await signInWithEmailAndPassword(auth, email, pass);
+	
+	// 🔹 Oppdater sist innlogget
+await setDoc(doc(db, "users", cred.user.uid), {
+  lastLogin: serverTimestamp()
+}, { merge: true });
+
+// 🔹 Logg hver innlogging (historikk)
+await setDoc(doc(collection(db, "loginLogs")), {
+  uid: cred.user.uid,
+  email: cred.user.email,
+  role: data.role,
+  timestamp: serverTimestamp()
+});
 
     // Hent rolle fra Firestore først
     const snap = await getDoc(doc(db, "users", cred.user.uid));
