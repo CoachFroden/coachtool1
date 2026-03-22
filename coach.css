@@ -70,10 +70,10 @@ body{
 
 .coach-grid{
   display:grid;
-  gap:40px;
-  grid-template-columns: repeat(2, 1fr);
-  max-width:800px;
-  margin:0 auto 70px auto;
+  grid-template-columns: repeat(3, 1fr); /* 2 per rad */
+  gap:16px; /* mindre luft */
+  max-width:500px; /* viktig på mobil */
+  margin:0 auto 40px auto;
 }
 
 /* =========================================
@@ -83,19 +83,23 @@ body{
 .coach-card{
   position:relative;
   background:var(--card);
-  border-radius:22px;
-  padding:34px 22px;
+  border-radius:16px;
+
+  padding:18px 12px; /* ↓ kompakt */
+  min-height:120px;  /* ↓ mye mindre */
+
   cursor:pointer;
   border:1px solid var(--border);
   backdrop-filter:blur(16px);
-  transition: all 0.3s ease;
-  overflow:hidden;
-    min-height:220px;
+
   display:flex;
   flex-direction:column;
   justify-content:center;
   align-items:center;
+
+  transition:0.25s ease;
 }
+
 
 /* subtle glow effect */
 .coach-card::before{
@@ -108,10 +112,7 @@ body{
   left:-200px;
   transition:0.4s ease;
   opacity:0;
-}
-
-.coach-card:hover::before{
-  opacity:1;
+  pointer-events:none;
 }
 
 .coach-card:hover{
@@ -126,8 +127,8 @@ body{
 ========================================= */
 
 .coach-icon{
-  font-size:2.5rem;
-  margin-bottom:15px;
+   font-size:2rem; /* ↓ fra 2.5 */
+  margin-bottom:10px;
   transition:0.3s ease;
 }
 
@@ -136,14 +137,14 @@ body{
 }
 
 .coach-title{
-  font-size:1.15rem;
+  font-size:1rem; /* ↓ litt mindre */
   font-weight:700;
   margin-bottom:6px;
   line-height:1.2;
 }
 
 .coach-desc{
-  font-size:0.88rem;
+  font-size:0.8rem;
   line-height:1.4;
   color:var(--muted);
 }

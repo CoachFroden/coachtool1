@@ -138,7 +138,9 @@ onAuthStateChanged(auth, async (user) => {
 const header = document.getElementById("coachHeader");
 const statusText = document.getElementById("pushStatusText");
 
-if (!header || !statusText) return;
+if (!header || !statusText) {
+  console.warn("Header eller statusText mangler");
+} else {
 
 function setHeaderColor(color) {
   header.style.setProperty("color", color, "important");
@@ -178,6 +180,7 @@ function updateHeaderStatus() {
 }
 
 updateHeaderStatus();
+}
 
 }); // ✅ VIKTIG: lukker onAuthStateChanged
 
