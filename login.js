@@ -11,7 +11,8 @@ import {
   doc,
   getDoc,
   setDoc,
-  serverTimestamp
+  serverTimestamp,
+  collection
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 const emailInput = document.getElementById("email");
@@ -93,18 +94,7 @@ loginBtn.onclick = async () => {
   try {
     const cred = await signInWithEmailAndPassword(auth, email, pass);
 	
-	// 🔹 Oppdater sist innlogget
-await setDoc(doc(db, "users", cred.user.uid), {
-  lastLogin: serverTimestamp()
-}, { merge: true });
-
-// 🔹 Logg hver innlogging (historikk)
-await setDoc(doc(collection(db, "loginLogs")), {
-  uid: cred.user.uid,
-  email: cred.user.email,
-  role: data.role,
-  timestamp: serverTimestamp()
-});
+	
 
     // Hent rolle fra Firestore først
     const snap = await getDoc(doc(db, "users", cred.user.uid));
@@ -114,6 +104,13 @@ await setDoc(doc(collection(db, "loginLogs")), {
     }
 
     const data = snap.data();
+	
+await setDoc(doc(collection(db, "loginLogs")), {
+  uid: cred.user.uid,
+  email: cred.user.email,
+  role: data.role,
+  timestamp: serverTimestamp()
+});
 
     // Krev e-postverifisering for assistenter (og evt andre), men IKKE for coach
     if (data.role !== "coach" && !cred.user.emailVerified) {
