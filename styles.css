@@ -725,25 +725,10 @@ button {
 }
 
 .ghost-btn {
-  background: #0b1220;
-  border: 1px solid rgba(255,255,255,0.08);
-  color: #f8fafc;
-
-  padding: 14px;
-  border-radius: 14px;
-
-  font-weight: 600;
-  font-size: 0.95rem;
-
-  transition: all 0.15s ease;
-}
-
-.ghost-btn:hover {
-  background: #111827;
-}
-
-.ghost-btn:active {
-  transform: scale(0.97);
+  background: transparent;
+  border: 1px solid rgba(147,197,253,0.35);
+  color: #93c5fd;
+  box-shadow: none;
 }
 
 .card-team-row {
@@ -1171,13 +1156,8 @@ section {
 
 .logout-wrapper {
   display: flex;
-  gap: 12px;
   justify-content: center;
-  margin: 24px 0;
-}
-
-.logout-wrapper button {
-  flex: 1;
+  margin: 1.5rem 0 2rem;
 }
 
 .logout-wrapper #logoutBtn {
@@ -1258,52 +1238,108 @@ input[type="time"] {
   font-size: 16px;
 }
 
-.logout-wrapper {
+#playingTimeList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#playingTimeList li {
+  margin-bottom: 8px;
+}
+
+#playingTimeList li {
   display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin: 20px 0;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+
+  background: rgba(255,255,255,0.05);
 }
 
-.logout-wrapper button {
-  flex: 1;
-}
-
-.logout-wrapper {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin: 24px 0 32px;
-}
-
-.logout-wrapper button {
-  flex: 1;
-  opacity: 1 !important;
-}
-
-.logout-wrapper {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin: 28px 0 36px;
-}
-
-.logout-wrapper .ghost-btn {
-  flex: 1;
-
-  background: #0b1220 !important;
-  border: 1px solid rgba(255,255,255,0.08) !important;
-  color: #e2e8f0 !important;
-
-  padding: 14px;
-  border-radius: 14px;
-
+/* NAVN */
+.player-name {
   font-weight: 600;
-  font-size: 0.95rem;
-
-  box-shadow: none !important;
 }
 
-.logout-wrapper .ghost-btn:hover {
-  background: #111827 !important;
+/* MINUTTER */
+.player-minutes {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+#playingTimeList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+
+  background: rgba(255,255,255,0.05);
+}
+
+/* STANDARD */
+.player-name {
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.player-minutes {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* =========================
+   STATUS
+========================= */
+
+/* 🟢 på banen */
+#playingTimeList li.on .player-name {
+  color: #22c55e;
+}
+
+/* ⚪ benk */
+#playingTimeList li.bench .player-name {
+  color: #9ca3af;
+}
+
+/* =========================
+   ANBEFALING
+========================= */
+
+/* 🔴 bør ut */
+#playingTimeList li.tired .player-minutes {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+/* 🟡 bør inn */
+#playingTimeList li.fresh .player-minutes {
+  color: #facc15;
+  font-weight: 700;
+}
+
+#playingTimeList li {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+}
+
+.pt-header {
+  font-size: 0.7rem;
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+
+  margin: 10px 4px 4px;
+  padding-top: 6px;
+
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
