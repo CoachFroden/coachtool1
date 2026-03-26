@@ -1343,3 +1343,171 @@ input[type="time"] {
 
   border-top: 1px solid rgba(255,255,255,0.08);
 }
+
+/* NY STRUKTUR */
+
+.match-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+/* Rad */
+.meta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.6rem;
+}
+
+/* Full bredde (toggle) */
+.meta-row.full {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Samme høyde på alt */
+.meta-row input,
+.meta-row select,
+.meta-row button {
+  height: 46px;
+  width: 100%;
+}
+
+/* Knapp litt mer “call to action” */
+#squadBtn {
+  font-size: 0.8rem;
+}
+
+/* Mobiljustering */
+@media (max-width: 420px) {
+  .meta-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .meta-row select#halfLength {
+    grid-column: 1 / -1;
+  }
+
+  .meta-row button#squadBtn {
+    grid-column: 1 / -1;
+  }
+}
+
+.cards {
+  margin-left: 6px;
+  font-size: 0.85em;
+  opacity: 0.8;
+}
+
+.modal-content {
+  background: #0f172a;
+  padding: 24px 20px;
+  border-radius: 18px;
+  width: 90%;
+  max-width: 320px;
+  text-align: center;
+
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+/* 🔥 TITTEL */
+.modal-content h3 {
+  margin-bottom: 18px;
+  font-size: 18px;
+}
+
+/* 🔥 INPUT */
+#adjustTimeInput {
+  width: 100%;
+  padding: 12px 14px;
+
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+
+  background: rgba(255,255,255,0.05);
+  color: white;
+
+  font-size: 16px;
+  text-align: center;
+
+  outline: none;
+  transition: 0.2s;
+}
+
+#adjustTimeInput:focus {
+  border-color: #3b82f6;
+  background: rgba(255,255,255,0.08);
+}
+
+/* 🔥 BUTTONS */
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.modal-buttons button {
+  flex: 1;
+  padding: 10px;
+
+  border-radius: 12px;
+  border: none;
+
+  background: #1e293b;
+  color: white;
+
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+.modal-buttons button:hover {
+  background: #334155;
+}
+
+.modal-hint {
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+#extra-events {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+#extra-events .full-width {
+  grid-column: span 2;
+}
+
+#startScreen {
+  margin-top: 40px;
+}
+
+.start-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  height: calc(100dvh - 140px);
+  padding-top: 20px;
+}
+
+#startNewMatchBtn {
+  min-width: 220px;
+  text-align: center;
+}
+
+.full-width-wrapper {
+  margin-top: 10px;
+  padding: 0 12px;
+}
+
+#toggleEventsBtn {
+  width: 100%;
+  display: block;
+}

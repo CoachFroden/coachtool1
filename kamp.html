@@ -46,33 +46,57 @@
 
   </div>
  
-<div id="preMatchMeta">
+<div id="preMatchMeta" class="hidden">
 <div class="match-meta-card">
   <div class="match-meta">
+
+  <!-- RAD 1 -->
+  <div class="meta-row full">
+    <button id="venueToggleBtn" class="venue-toggle home">
+      Hjemmekamp
+    </button>
+  </div>
+
+  <!-- RAD 2 -->
+  <div class="meta-row">
     <input id="matchDate" type="date" />
     <input id="matchTime" type="time" />
     <select id="halfLength">
-  <option value="35" selected>2 × 35 min</option>
-  <option value="1">2 × 1 min</option>
-  <option value="40">2 × 40 min</option>
-  <option value="45">2 × 45 min</option>
-</select>
+      <option value="35" selected>2 × 35 min</option>
+      <option value="1">2 × 1 min</option>
+      <option value="40">2 × 40 min</option>
+      <option value="45">2 × 45 min</option>
+    </select>
+  </div>
 
-  <select id="matchType">
-    <option value="league">Seriekamp</option>
-    <option value="cup">Cupkamp</option>
-    <option value="friendly">Treningskamp</option>
-  </select>
+  <!-- RAD 3 -->
+  <div class="meta-row">
+    <select id="matchType">
+      <option value="league">Seriekamp</option>
+      <option value="cup">Cupkamp</option>
+      <option value="friendly">Treningskamp</option>
+    </select>
 
-  <button id="venueToggleBtn" class="venue-toggle home">
-    Hjemmekamp
-  </button>
+    <button id="squadBtn">
+      Spillertropp / startellever
+    </button>
+  </div>
 
 </div>
 </div>
 </div>
 
 </header>
+
+<div id="startScreen">
+  <div class="start-container">
+    <button id="startNewMatchBtn" class="primary-btn">
+      Start ny kamp
+    </button>
+  </div>
+</div>
+
+<div id="matchUI" class="hidden">
 
   <!-- KAMPKLOKKE -->
   <section id="clock-section">
@@ -88,26 +112,29 @@
 </section>
 
   <!-- KAMPKONTROLLER -->
+  <div id="matchControls">
+
+  <!-- KAMPKONTROLLER -->
   <section id="controls">
     <button id="startBtn">Start</button>
     <button id="pauseBtn">Pause</button>
     <button id="resumeBtn">Gjenoppta</button>
     <button id="endBtn">Slutt</button>
-	<button id="adjustStartBtn">Juster starttid</button>
-	<button id="squadBtn">Spillertropp / startellever</button>
+    <button id="adjustStartBtn">Juster starttid</button>
   </section>
-  
-<div class="playing-time-wrapper">
-  <button id="togglePlayingTimeBtn" class="secondary-btn">
-    Vis spilletid
-  </button>
 
-  <div id="playingTimePanel" class="playing-time hidden">
-    <ul id="playingTimeList"></ul>
+  <!-- SPILLETID -->
+  <div class="playing-time-wrapper">
+    <button id="togglePlayingTimeBtn" class="secondary-btn">
+      Vis spilletid
+    </button>
+
+    <div id="playingTimePanel" class="playing-time hidden">
+      <ul id="playingTimeList"></ul>
+    </div>
   </div>
-</div>
 
-  <!-- HENDELSER -->
+  <!-- MÅL -->
   <section id="events">
 
     <div class="team-events">
@@ -122,21 +149,31 @@
 
   </section>
 
-  <!-- ANDRE HENDELSER -->
-  <section id="extra-events">
-    <button id="subBtn">Bytte</button>
-    <button id="cardBtn">Kort</button>
-  </section>
+  <!-- BYTTE + KORT -->
+<section id="extra-events">
+  <button id="subBtn">Bytte</button>
+  <button id="cardBtn">Kort</button>
+</section>
+
+<div class="full-width-wrapper">
+  <button id="toggleEventsBtn" class="secondary-btn full-width">
+    Vis hendelser
+  </button>
+</div>
+
+</div>
+
+<!-- NY KAMP -->
+<button id="newMatchBtn" class="hidden">Ny kamp</button>
 
   <!-- HENDELSESLOGG -->
-  <section id="event-log">
+
+  <section id="event-log" class="hidden">
     <h3>Hendelser</h3>
     <ul id="eventList"></ul>
   </section>
-  <div class="logout-wrapper">
-  <button id="logoutBtn" class="ghost-btn">Logg ut</button>
 </div>
-
+</div>
   <!-- MODAL: KORT -->
 <div class="modal hidden" id="cardModal">
   <div class="modal-content">
@@ -287,6 +324,29 @@
       <button id="cancelSquadBtn">Avbryt</button>
       <button id="saveSquadBtn">Lagre</button>
     </div>
+  </div>
+</div>
+
+<div id="adjustTimeModal" class="modal hidden">
+  <div class="modal-content">
+
+    <h3>Juster starttid</h3>
+	<p class="modal-hint">
+  Angi hvor mange minutter som er spilt i denne omgangen
+</p>
+
+    <input
+      type="number"
+      id="adjustTimeInput"
+      placeholder="Minutter"
+      min="0"
+    />
+
+    <div class="modal-buttons">
+      <button id="confirmAdjustTimeBtn">OK</button>
+      <button id="cancelAdjustTimeBtn">Avbryt</button>
+    </div>
+
   </div>
 </div>
 
