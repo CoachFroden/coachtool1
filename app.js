@@ -418,6 +418,38 @@ if (matchState.status === "ENDED") {
 }
 }
 
+function updateUIByStatus() {
+
+  startScreen.style.display = "none";
+
+  if (matchState.status === "NOT_STARTED") {
+    preMatch.classList.remove("hidden");
+    matchUI.classList.add("hidden");
+  }
+
+  if (matchState.status === "UPCOMING") {
+    preMatch.classList.remove("hidden");
+    matchUI.classList.remove("hidden");
+
+    clockSection.style.display = "none";
+    matchControls.style.display = "none";
+    events.style.display = "none";
+    extraEvents.style.display = "none";
+    eventLog.style.display = "none";
+  }
+
+  if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
+    preMatch.classList.add("hidden");
+    matchUI.classList.remove("hidden");
+
+    clockSection.style.display = "block";
+    matchControls.style.display = "block";
+    events.style.display = "block";
+    extraEvents.style.display = "block";
+    eventLog.style.display = "block";
+  }
+}
+
 function startPlayingTime() {
   const startMs = 0;
 
@@ -664,12 +696,17 @@ function handleRedCard(playerId, timeMs) {
    ====================================================== */
    
 startBtn.addEventListener("click", () => {
+
   if (!auth.currentUser) {
     alert("Du må være logget inn");
     return;
   }
+
   document.getElementById("preMatchMeta")
-  .classList.add("hidden-meta");
+    .classList.add("hidden-meta");
+
+  // 🔥 LEGG DENNE HER
+  clockSection.style.display = "block";
 
   readMatchMetaFromUI();
 
@@ -697,15 +734,14 @@ saveNewMatch();
 saveLiveUpdate();
 
 lockMatchMetaInputs();
-document.getElementById("preMatchMeta")?.classList.add("hidden");
-document.getElementById("squadBtn")?.classList.add("hidden");
-document.getElementById("venueToggleBtn")?.classList.add("hidden");
 periodIndicator.textContent = "1. omgang";
 
 startPlayingTime();
 startClock();
+
 updateControls();
 addEvent("Kamp startet");
+updateUIByStatus();
 
 setTimeout(() => {
   updatePlayingTimeUI();
@@ -1242,6 +1278,29 @@ function openSquadModal() {
   const list = document.getElementById("squadList");
   list.innerHTML = "";
   
+  // 🔥 INIT DEFAULT STATE (VIKTIG)
+HOME_SQUAD.forEach(p => {
+
+  // hvis spiller ikke finnes → lag ny
+  if (!matchState.players.home[p.id]) {
+    matchState.players.home[p.id] = {
+      id: p.id,
+      name: p.name,
+      present: true,
+      starter: true,
+      intervals: [],
+      cards: []
+    };
+  }
+
+  // 🔥 VIKTIG: hvis kampen IKKE er startet → reset starter
+  if (["NOT_STARTED", "UPCOMING"].includes(matchState.status)) {
+    matchState.players.home[p.id].present = true;
+    matchState.players.home[p.id].starter = true;
+  }
+
+});
+  
   const saveBtn = document.getElementById("saveSquadBtn");
 
 if (squadLocked) {
@@ -1279,8 +1338,10 @@ presentCheckbox.checked =
 
 const starterCheckbox = document.createElement("input");
 starterCheckbox.type = "checkbox";
+const existing = matchState.players.home[player.id];
+
 starterCheckbox.checked =
-  matchState.players.home[player.id]?.starter ?? true;
+  existing ? existing.starter : true;
   starterCheckbox.disabled = squadLocked || !presentCheckbox.checked;
 
   const starterText = document.createElement("span");
@@ -1289,9 +1350,11 @@ starterCheckbox.checked =
   starterLabel.append(starterCheckbox, starterText);
 
   /* ===== STARTFARGE ===== */
-  if (starterCheckbox.checked) {
-    li.classList.add("is-starter");
-  }
+if (starterCheckbox.checked) {
+  li.classList.add("is-starter");
+} else {
+  li.classList.remove("is-starter");
+}
 
   /* ===== REGEL: ikke tilstede => ikke starter ===== */
 presentCheckbox.addEventListener("change", () => {
@@ -1309,14 +1372,18 @@ presentCheckbox.addEventListener("change", () => {
 });
 
   /* ===== FARGEBYTTE RØD / GRØNN ===== */
-  starterCheckbox.addEventListener("change", () => {
-  const currentStarters =
-    document.querySelectorAll(".squad-row.is-starter").length;
+starterCheckbox.addEventListener("change", (e) => {
 
-  if (starterCheckbox.checked && currentStarters >= MAX_STARTERS) {
-    starterCheckbox.checked = false;
-    alert(`Maks ${MAX_STARTERS} startere`);
-    return;
+  // 🔥 KUN hvis bruker faktisk klikker
+  if (e.isTrusted) {
+    const currentStarters =
+      document.querySelectorAll(".squad-row.is-starter").length;
+
+    if (starterCheckbox.checked && currentStarters >= MAX_STARTERS) {
+      starterCheckbox.checked = false;
+      alert(`Maks ${MAX_STARTERS} startere`);
+      return;
+    }
   }
 
   li.classList.toggle("is-starter", starterCheckbox.checked);
@@ -1625,19 +1692,9 @@ await loadActiveMatch();
 const urlMatchId = getMatchIdFromUrl();
 const existingMatchId = localStorage.getItem("activeMatchId");
 
-// 1️⃣ Hvis vi HAR en aktiv kamp → bruk den
 if (existingMatchId) {
-  console.log("Fortsetter aktiv kamp:", existingMatchId);
-}
-
-// 2️⃣ Hvis ikke → men vi har URL → bruk den
-else if (urlMatchId) {
-  console.log("Starter kamp fra oversikt:", urlMatchId);
-  localStorage.setItem("activeMatchId", urlMatchId);
-}
-
-// 3️⃣ Hvis ingen av delene → ny kamp
-else {
+  console.log("Forsøker å laste aktiv kamp:", existingMatchId);
+} else {
   console.log("Ingen aktiv kamp");
 }
 
@@ -1740,14 +1797,30 @@ async function saveFinalMatch() {
   const user = auth.currentUser;
   if (!user) return;
 
-const matchRef = getMatchRef();
-if (!matchRef) return;
+  let matchRef;
 
-const summary = getMatchSummary();
+  if (matchState.userRole === "coach") {
+    matchRef = doc(db, "matches", matchState.matchId);
+  } else {
+    matchRef = getMatchRef();
+  }
 
-await setDoc(
-  matchRef,
+  if (!matchRef) return;
+
+  const summary = getMatchSummary();
+
+  await setDoc(
+    matchRef,
     {
+      // 🔥 LEGG TIL DETTE
+      meta: matchState.meta,
+      score: matchState.score,
+      events: matchState.events,
+
+      // 🔥 DETTE ER VIKTIG FOR STATISTIKK
+      type: matchState.meta.type,
+
+      // resten
       ...summary,
       status: "ENDED",
       updatedAt: serverTimestamp()
@@ -1755,12 +1828,7 @@ await setDoc(
     { merge: true }
   );
 
-  console.log(
-    "Kamp avsluttet og lagret:",
-    matchState.matchId,
-    "Rolle:",
-    matchState.userRole
-  );
+  console.log("Kamp avsluttet:", matchState.matchId);
 }
 
 async function saveLiveUpdate() {
@@ -1948,6 +2016,13 @@ if (matchState.userRole === "assistantCoach") {
 
 if (!snap.exists()) {
   console.log("❌ Fant ikke kamp i Firestore");
+
+  // 🔥 RESET ALT
+  localStorage.removeItem("activeMatchId");
+
+  // 👉 send bruker tilbake til start
+  window.location.href = "kamp.html";
+
   return;
 }
 
@@ -2066,7 +2141,8 @@ matchState.squad.onField.home.forEach(id => {
   }
 });
 
-  matchState.lineupConfirmed = true;
+  matchState.lineupConfirmed =
+  Object.keys(matchState.players.home || {}).length > 0;
   updateControls();
 
   /* =========================
@@ -2131,6 +2207,7 @@ if (overtimeMs > 0) {
 updateScoreboard();
 renderEvents();
 updateControls();
+updateUIByStatus();
 
 if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
   document.getElementById("matchUI")?.classList.remove("hidden");
@@ -2139,49 +2216,12 @@ if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
 setTimeout(() => {
   updatePlayingTimeUI();
 }, 0);
-// 🔥 STYR UI BASERT PÅ STATUS
-
-startScreen.style.display = "none";
-
-if (matchState.status === "NOT_STARTED") {
-  preMatch.classList.remove("hidden");
-  matchUI.classList.add("hidden");
-}
-
-if (matchState.status === "UPCOMING") {
-  preMatch.classList.remove("hidden");
-  matchUI.classList.remove("hidden");
-
-  // 👇 SKJUL DET DU IKKE VIL HA
-  clockSection.style.display = "none";
-  matchControls.style.display = "none";
-  events.style.display = "none";
-  extraEvents.style.display = "none";
-  eventLog.style.display = "none";
-}
-
-if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
-  preMatch.classList.add("hidden");
-  matchUI.classList.remove("hidden");
-
-  clockSection.style.display = "block";
-  matchControls.style.display = "block";
-  events.style.display = "block";
-  extraEvents.style.display = "block";
-  eventLog.style.display = "block";
-}
 }
 
 document.addEventListener("DOMContentLoaded", () => {
 
   const startNewMatchBtn = document.getElementById("startNewMatchBtn");
   const activeMatchId = localStorage.getItem("activeMatchId");
-
-if (activeMatchId) {
-  startScreen.style.display = "none";
-  // IKKE gjør mer her
-  return;
-}
   
   // 👉 START: vis KUN startknapp
   startScreen.style.display = "block";
