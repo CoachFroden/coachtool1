@@ -39,6 +39,11 @@ onAuthStateChanged(auth, (user) => {
 
 const db = getFirestore();
 
+function getMatchIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("matchId");
+}
+
 function setLoginLoading(isLoading) {
   const loginBtn = document.getElementById("loginBtn");
   const registerBtn = document.getElementById("registerBtn");
@@ -62,7 +67,7 @@ const matchState = {
     opponent: "",
     date: "",
     startTime: "",
-    halfLengthMin: 45,
+    halfLengthMin: 35,
     venue: "home",	// ✅ riktig
 	type: "league"
   },
@@ -171,6 +176,12 @@ const matchControls = document.getElementById("matchControls");
 const newMatchBtn = document.getElementById("newMatchBtn");
 
 const preMatch = document.getElementById("preMatchMeta");
+const startScreen = document.getElementById("startScreen");
+const matchUI = document.getElementById("matchUI");
+  const eventLog = document.getElementById("event-log");
+    const teams = document.querySelector(".teams");
+
+
 
 function populateGoalScorers(team) {
   goalScorerSelect.innerHTML = "";
@@ -323,7 +334,7 @@ function readMatchMetaFromUI() {
 
   const half = Number(halfLengthInput.value);
   matchState.meta.halfLengthMin =
-    Number.isFinite(half) && half > 0 ? half : 45;
+    Number.isFinite(half) && half > 0 ? half : 35;
 
   const typeSelect = document.getElementById("matchType");
   matchState.meta.type = typeSelect ? typeSelect.value : "league";
@@ -352,8 +363,8 @@ function updateControls() {
   resumeBtn.style.display = "none";
   endBtn.style.display = "none";
 
-  if (
-  matchState.status === "NOT_STARTED" &&
+if (
+  ["NOT_STARTED", "UPCOMING"].includes(matchState.status) &&
   matchState.lineupConfirmed
 ) {
   startBtn.style.display = "block";
@@ -376,7 +387,6 @@ function updateControls() {
     btn.disabled = matchState.status !== "LIVE";
   });
   
-  const preMatch = document.getElementById("preMatchMeta");
 
 // 👇 LEGG DETTE HER
 if (matchState.status === "ENDED") {
@@ -423,7 +433,7 @@ function removeFromField(playerId) {
 }
 
 function getHalfLengthMs() {
-  const min = matchState.meta.halfLengthMin ?? 45;
+  const min = matchState.meta.halfLengthMin ?? 35;
   return min * 60 * 1000;
 }
 
@@ -477,23 +487,75 @@ function addEvent(event) {
 
   const baseEvent =
     typeof event === "string"
-      ? { type: "text", text: event }
+      ? { type: "text", rawText: event }
       : event;
+
+  const eventId =
+    crypto.randomUUID?.() ||
+    `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+  const rawText = baseEvent.rawText ?? baseEvent.text ?? "";
 
   const fullEvent = {
     ...baseEvent,
-    text: `${timestamp} – ${baseEvent.text}`,
+    id: baseEvent.id || eventId,
+    rawText,
+    text: `${timestamp} – ${rawText}`,
+    createdClock: timestamp,
     reportedAt: new Date().toISOString(),
+    edited: false,
     ...(user ? { reportedBy: user.uid } : {})
   };
 
   matchState.events.unshift(fullEvent);
 
   renderEvents();
-  
-  eventLog.classList.remove("hidden");
-toggleEventsBtn.textContent = "Skjul hendelser";
+  saveLiveUpdate();
 
+  eventLog.classList.remove("hidden");
+  toggleEventsBtn.textContent = "Skjul hendelser";
+}
+
+function rebuildEventText(event) {
+  const prefix = event.createdClock ? `${event.createdClock} – ` : "";
+  return prefix + (event.rawText || "");
+}
+
+function editEvent(eventId) {
+  const event = matchState.events.find(e => e.id === eventId);
+  if (!event) return;
+
+  const updatedText = prompt("Rediger hendelse:", event.rawText || "");
+  if (updatedText === null) return;
+
+  const trimmed = updatedText.trim();
+  if (!trimmed) {
+    alert("Hendelsen kan ikke være tom");
+    return;
+  }
+
+  event.rawText = trimmed;
+  event.text = rebuildEventText(event);
+  event.edited = true;
+  event.editedAt = new Date().toISOString();
+
+  renderEvents();
+  saveLiveUpdate();
+}
+
+function deleteEvent(eventId) {
+  if (!eventId) {
+    alert("Kunne ikke slette: hendelsen mangler id");
+    return;
+  }
+
+  const ok = confirm("Vil du slette denne hendelsen?");
+  if (!ok) return;
+
+  matchState.events = matchState.events.filter(e => e.id !== eventId);
+
+  renderEvents();
+  saveLiveUpdate();
 }
 
 
@@ -504,7 +566,33 @@ function renderEvents() {
 
   matchState.events.forEach(event => {
     const li = document.createElement("li");
-    li.textContent = event.text;
+    li.className = "event-row";
+
+    const textSpan = document.createElement("span");
+    textSpan.className = "event-text";
+    textSpan.textContent = event.text + (event.edited ? " (redigert)" : "");
+
+    const actions = document.createElement("div");
+    actions.className = "event-actions";
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "event-edit-btn";
+    editBtn.textContent = "Rediger";
+    editBtn.addEventListener("click", () => editEvent(event.id));
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "event-delete-btn";
+    deleteBtn.textContent = "Slett";
+    deleteBtn.addEventListener("click", () => deleteEvent(event.id));
+
+    actions.appendChild(editBtn);
+    actions.appendChild(deleteBtn);
+
+    li.appendChild(textSpan);
+    li.appendChild(actions);
+
     list.appendChild(li);
   });
 }
@@ -1128,7 +1216,7 @@ function setLoginMessage(text, type = "") {
 document.getElementById("squadBtn").addEventListener("click", openSquadModal);
 
 function openSquadModal() {
-	const squadLocked = matchState.status !== "NOT_STARTED";
+	const squadLocked = !["NOT_STARTED", "UPCOMING"].includes(matchState.status);
   const list = document.getElementById("squadList");
   list.innerHTML = "";
   
@@ -1374,11 +1462,15 @@ saveLiveUpdate();
 
 
 document.getElementById("saveSquadBtn").addEventListener("click", () => {
-	if (matchState.status !== "NOT_STARTED") {
-  return;
-}
-matchState.players.home = {};
-matchState.squad.onField.home = [];
+
+  if (!["NOT_STARTED", "UPCOMING"].includes(matchState.status)) {
+    return;
+  }
+
+  matchState.players.home = {};
+  matchState.squad.onField.home = [];
+
+  // resten av koden din...
 
 document.querySelectorAll("#squadList li").forEach(li => {
   const id = li.dataset.playerId;
@@ -1462,13 +1554,14 @@ function getMatchSummary() {
     score: matchState.score,
     result,
     events: matchState.events,
-    playingTime: Object.values(matchState.players.home)
-      .filter(p => p.present)
-      .map(p => ({
-        id: p.id,
-        name: p.name,
-        minutes: calculateMinutesPlayed(p)
-      }))
+playingTime: Object.values(matchState.players.home)
+  .filter(p => p.present)
+  .map(p => ({
+    id: p.id,
+    name: p.name,
+    minutes: calculateMinutesPlayed(p),
+    cards: p.cards || []   // ✅ riktig
+  }))
   };
 }
 
@@ -1506,6 +1599,25 @@ if (data.role !== "coach" && !user.emailVerified) {
 matchState.userRole = data.role;
 await loadActiveMatch();
 });
+
+const urlMatchId = getMatchIdFromUrl();
+const existingMatchId = localStorage.getItem("activeMatchId");
+
+// 1️⃣ Hvis vi HAR en aktiv kamp → bruk den
+if (existingMatchId) {
+  console.log("Fortsetter aktiv kamp:", existingMatchId);
+}
+
+// 2️⃣ Hvis ikke → men vi har URL → bruk den
+else if (urlMatchId) {
+  console.log("Starter kamp fra oversikt:", urlMatchId);
+  localStorage.setItem("activeMatchId", urlMatchId);
+}
+
+// 3️⃣ Hvis ingen av delene → ny kamp
+else {
+  console.log("Ingen aktiv kamp");
+}
 
 async function saveNewMatch() {
   const user = auth.currentUser;
@@ -1550,7 +1662,7 @@ async function saveNewMatch() {
 const meta = {
   ourTeam: matchState.meta.ourTeam,
   opponent: matchState.meta.opponent,
-  venue: matchState.meta.venue,
+  venue: matchState.meta.venue || "home",
   date: matchState.meta.date,
   startTime: matchState.meta.startTime,
   halfLengthMin: matchState.meta.halfLengthMin,
@@ -1734,6 +1846,7 @@ localStorage.setItem("lastMatchState", JSON.stringify(matchState));
   dateInput.disabled = false;
   timeInput.disabled = false;
   halfLengthInput.disabled = false;
+  halfLengthInput.value = 35;
 
   // 🔄 Periodetekst
   periodIndicator.textContent = "Klar for kamp";
@@ -1755,25 +1868,11 @@ document.getElementById("logoutBtn")
   
 newMatchBtn?.addEventListener("click", () => {
   localStorage.removeItem("activeMatchId");
-  location.reload(); // 🔥 enkelt og stabilt
 
-  const startScreen = document.getElementById("startScreen");
-  const preMatch = document.getElementById("preMatchMeta");
-  const clockSection = document.getElementById("clock-section");
-  const matchControls = document.getElementById("matchControls");
-  const events = document.getElementById("events");
-  const extraEvents = document.getElementById("extra-events");
-  const eventLog = document.getElementById("event-log");
-  const teams = document.querySelector(".teams");
+  // 🔥 fjern matchId fra URL
+  window.history.replaceState({}, "", "kamp.html");
 
-  startScreen.style.display = "block";
-  preMatch.classList.add("hidden");
-  teams.style.display = "none";
-  clockSection.style.display = "none";
-  matchControls.style.display = "none";
-  events.style.display = "none";
-  extraEvents.style.display = "none";
-  eventLog.style.display = "none";
+  location.reload();
 });
   
   window.addEventListener("load", () => {
@@ -1788,7 +1887,6 @@ newMatchBtn?.addEventListener("click", () => {
 });
 
 const toggleEventsBtn = document.getElementById("toggleEventsBtn");
-const eventLog = document.getElementById("event-log");
 
 toggleEventsBtn.addEventListener("click", () => {
   eventLog.classList.toggle("hidden");
@@ -1802,6 +1900,9 @@ toggleEventsBtn.addEventListener("click", () => {
 
 // Sett dagens dato og klokkeslett automatisk ved oppstart
 document.addEventListener("DOMContentLoaded", function () {
+
+  if (localStorage.getItem("activeMatchId")) return; // 🔥 VIKTIG
+
   const now = new Date();
 
   const yyyy = now.getFullYear();
@@ -1816,7 +1917,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 setInterval(() => {
-  if (matchState.status === "LIVE") {
+  if (matchState.status === "LIVE" && matchState.timer.startTimestamp) {
     saveLiveUpdate();
     console.log("Autosave (5 min)");
   }
@@ -1863,11 +1964,11 @@ async function loadActiveMatch() {
   matchState.matchId = matchId;
   matchState.meta = data.meta || {};
 
-  homeTeamInput.value = matchState.meta.ourTeam || "";
+  homeTeamInput.value = matchState.meta.ourTeam || "Samnanger";
   awayTeamInput.value = matchState.meta.opponent || "";
   dateInput.value = matchState.meta.date || "";
-  timeInput.value = matchState.meta.startTime || "";
-  halfLengthInput.value = matchState.meta.halfLengthMin || 45;
+  timeInput.value = matchState.meta.startTime || matchState.meta.time || "";
+  halfLengthInput.value = matchState.meta.halfLengthMin || 35;
 
   updateVenueToggle();
 
@@ -1944,6 +2045,7 @@ matchState.squad.onField.home.forEach(id => {
 });
 
   matchState.lineupConfirmed = true;
+  updateControls();
 
   /* =========================
      STATUS + TIMER
@@ -2008,31 +2110,39 @@ updateScoreboard();
 renderEvents();
 updateControls();
 
-document.getElementById("matchUI")?.classList.remove("hidden");
+if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
+  document.getElementById("matchUI")?.classList.remove("hidden");
+}
 
 setTimeout(() => {
   updatePlayingTimeUI();
 }, 0);
+// 🔥 STYR UI BASERT PÅ STATUS
+
+startScreen.style.display = "none";
+
+if (matchState.status === "NOT_STARTED" || matchState.status === "UPCOMING") {
+  preMatch.classList.remove("hidden");
+  matchUI.classList.add("hidden");
+}
+
+if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
+  preMatch.classList.add("hidden");
+  matchUI.classList.remove("hidden");
+}
 }
 
 document.addEventListener("DOMContentLoaded", () => {
 
-  const startScreen = document.getElementById("startScreen");
   const startNewMatchBtn = document.getElementById("startNewMatchBtn");
-  const preMatch = document.getElementById("preMatchMeta");
-
   const clockSection = document.getElementById("clock-section");
-  const matchControls = document.getElementById("matchControls");
   const events = document.getElementById("events");
-  const extraEvents = document.getElementById("extra-events");
-  const eventLog = document.getElementById("event-log");
-  const teams = document.querySelector(".teams");
-  
+  const extraEvents = document.getElementById("extra-events");  
   const activeMatchId = localStorage.getItem("activeMatchId");
 
 if (activeMatchId) {
-  // 🔥 IKKE vis startskjerm hvis kamp finnes
   startScreen.style.display = "none";
+  // IKKE gjør mer her
   return;
 }
   
