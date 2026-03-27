@@ -2150,12 +2150,25 @@ if (matchState.status === "NOT_STARTED") {
 
 if (matchState.status === "UPCOMING") {
   preMatch.classList.remove("hidden");
-  matchUI.classList.remove("hidden"); // ✅ viktig
+  matchUI.classList.remove("hidden");
+
+  // 👇 SKJUL DET DU IKKE VIL HA
+  clockSection.style.display = "none";
+  matchControls.style.display = "none";
+  events.style.display = "none";
+  extraEvents.style.display = "none";
+  eventLog.style.display = "none";
 }
 
 if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
   preMatch.classList.add("hidden");
   matchUI.classList.remove("hidden");
+
+  clockSection.style.display = "block";
+  matchControls.style.display = "block";
+  events.style.display = "block";
+  extraEvents.style.display = "block";
+  eventLog.style.display = "block";
 }
 }
 
