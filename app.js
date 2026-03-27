@@ -430,6 +430,7 @@ function updateUIByStatus() {
   if (matchState.status === "UPCOMING") {
     preMatch.classList.remove("hidden");
     matchUI.classList.remove("hidden");
+	teams.style.display = "flex";
 
     clockSection.style.display = "none";
     matchControls.style.display = "none";
@@ -441,6 +442,7 @@ function updateUIByStatus() {
   if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
     preMatch.classList.add("hidden");
     matchUI.classList.remove("hidden");
+	teams.style.display = "flex";
 
     clockSection.style.display = "block";
     matchControls.style.display = "block";
@@ -2233,28 +2235,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const startNewMatchBtn = document.getElementById("startNewMatchBtn");
   const activeMatchId = localStorage.getItem("activeMatchId");
-  
+
+  // 🔴 STOPP hvis kamp finnes
+  if (activeMatchId) {
+    return;
+  }
+
   // 👉 START: vis KUN startknapp
   startScreen.style.display = "block";
   preMatch.classList.add("hidden");
-  teams.style.display = "none";
-  clockSection.style.display = "none";
-  matchControls.style.display = "none";
-  events.style.display = "none";
-  extraEvents.style.display = "none";
-  eventLog.style.display = "none";
+  teams.style.display = "none"; // 🔥 viktig
 
-  // 👉 KLIKK
   startNewMatchBtn.addEventListener("click", () => {
 
+    matchState.status = "UPCOMING";
+
     startScreen.style.display = "none";
-    preMatch.classList.remove("hidden");
-    teams.style.display = "flex";
-    clockSection.style.display = "block";
-    matchControls.style.display = "block";
-    events.style.display = "block";
-    extraEvents.style.display = "block";
-    eventLog.style.display = "block";
+
+    updateUIByStatus();
   });
 
+});
+document.getElementById("backBtn")?.addEventListener("click", () => {
+
+  // 🔥 fjern aktiv kamp fra localStorage
+  localStorage.removeItem("activeMatchId");
+
+  // 🔥 gå tilbake til oversikt
+  window.location.href = "oversikt.html"; // <- juster hvis siden heter noe annet
 });
