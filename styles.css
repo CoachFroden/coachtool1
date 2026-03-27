@@ -1477,7 +1477,15 @@ input[type="time"] {
 #extra-events {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
+  padding: 0.75rem 1rem 1rem; /* litt mer luft nederst */
+}
+
+#subBtn,
+#cardBtn {
+  width: 100%;
+  justify-self: stretch;
+  margin-bottom: 10px;
 }
 
 #extra-events .full-width {
@@ -1503,11 +1511,13 @@ input[type="time"] {
 }
 
 .full-width-wrapper {
-  margin-top: 10px;
+  margin-top: 12px;
+  margin-bottom: 14px; /* luft under "Vis hendelser" */
   padding: 0 12px;
 }
 
 #toggleEventsBtn {
   width: 100%;
   display: block;
+   margin-bottom: 20px;
 }
