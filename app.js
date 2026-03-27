@@ -1692,6 +1692,12 @@ await loadActiveMatch();
 const urlMatchId = getMatchIdFromUrl();
 const existingMatchId = localStorage.getItem("activeMatchId");
 
+// 🔥 Hvis vi kommer fra oversikt → bruk URL
+if (urlMatchId) {
+  console.log("Laster kamp fra URL:", urlMatchId);
+  localStorage.setItem("activeMatchId", urlMatchId);
+}
+
 if (existingMatchId) {
   console.log("Forsøker å laste aktiv kamp:", existingMatchId);
 } else {
@@ -2048,8 +2054,12 @@ snap = await getDoc(matchRef);
   matchState.matchId = matchId;
   matchState.meta = data.meta || {};
 
-  homeTeamInput.value = matchState.meta.ourTeam || "Samnanger";
-  awayTeamInput.value = matchState.meta.opponent || "";
+homeTeamInput.value =
+  matchState.meta?.ourTeam?.trim() || "Samnanger";
+
+awayTeamInput.value =
+  matchState.meta?.opponent?.trim() || "Motstander";
+  
   dateInput.value = matchState.meta.date || "";
   timeInput.value = matchState.meta.startTime || matchState.meta.time || "";
   halfLengthInput.value = matchState.meta.halfLengthMin || 35;
@@ -2208,6 +2218,7 @@ updateScoreboard();
 renderEvents();
 updateControls();
 updateUIByStatus();
+teams.style.display = "flex";
 
 if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
   document.getElementById("matchUI")?.classList.remove("hidden");
