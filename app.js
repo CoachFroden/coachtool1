@@ -7,7 +7,9 @@ import {
   getDoc,
   getDocs,
   setDoc,
-  serverTimestamp
+  serverTimestamp,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 
@@ -261,6 +263,19 @@ function startClock() {
     }
 
   }, 1000);
+}
+
+async function findLiveMatch() {
+  const q = query(
+    collection(db, "matches"),
+    where("status", "in", ["LIVE", "PAUSED"])
+  );
+
+  const snap = await getDocs(q);
+
+  if (snap.empty) return null;
+
+  return snap.docs[0];
 }
    
  function getCurrentMatchTimeMs() {
@@ -697,7 +712,14 @@ function handleRedCard(playerId, timeMs) {
    BUTTON HANDLERS
    ====================================================== */
    
-startBtn.addEventListener("click", () => {
+startBtn.addEventListener("click", async () => {
+	
+	const liveMatch = await findLiveMatch();
+
+if (liveMatch) {
+  alert("Det pågår allerede en kamp.");
+  return;
+}
 
   if (!auth.currentUser) {
     alert("Du må være logget inn");
@@ -1689,6 +1711,19 @@ if (data.role !== "coach" && !user.emailVerified) {
 // ✅ Godkjent – gjør ingenting
 matchState.userRole = data.role;
 await loadActiveMatch();
+
+const liveMatch = await findLiveMatch();
+
+if (liveMatch) {
+  const liveId = liveMatch.id;
+
+  // hvis du IKKE allerede er i denne kampen
+  if (localStorage.getItem("activeMatchId") !== liveId) {
+    localStorage.setItem("activeMatchId", liveId);
+    window.location.href = `kamp.html?matchId=${liveId}`;
+    return;
+  }
+}
 });
 
 const urlMatchId = getMatchIdFromUrl();
@@ -2119,15 +2154,11 @@ if (!data.players && (!data.squad || !data.squad.present?.length)) {
      ON FIELD (VIKTIG)
   ========================= */
 
-  if (data.onField && data.onField.length > 0) {
-    matchState.squad.onField.home = data.onField;
-  } else {
-    Object.values(matchState.players.home).forEach(p => {
-      if (p.starter) {
-        matchState.squad.onField.home.push(p.id);
-      }
-    });
-  }
+if (data.onField && data.onField.length > 0) {
+  matchState.squad.onField.home = data.onField;
+} else if (data.squad?.starters?.length) {
+  matchState.squad.onField.home = data.squad.starters.map(p => p.id);
+}
   
   // 🔥 sørg for at alle på banen har aktivt interval
 matchState.squad.onField.home.forEach(id => {
@@ -2221,6 +2252,8 @@ renderEvents();
 updateControls();
 updateUIByStatus();
 teams.style.display = "flex";
+populateGoalScorers("home");
+matchState.lineupConfirmed = true;
 
 if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
   document.getElementById("matchUI")?.classList.remove("hidden");
