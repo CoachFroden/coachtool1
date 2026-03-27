@@ -952,7 +952,9 @@ function openSubModal() {
 
   // Spillere på benken → kan gå INN
 Object.values(matchState.players.home).forEach(p => {
-  if (!isOnField(p.id)) {
+  const hasRedCard = p.cards?.some(c => c.type === "red");
+
+  if (!isOnField(p.id) && !hasRedCard) {
     const opt = document.createElement("option");
     opt.value = p.id;
     opt.textContent = p.name;
@@ -1930,21 +1932,37 @@ async function loadActiveMatch() {
   const user = auth.currentUser;
   if (!user) return;
 
-  let matchRef;
+let matchRef;
+let snap;
 
-  if (matchState.userRole === "coach") {
+if (matchState.userRole === "assistantCoach") {
+
+  // prøv assistant sin egen først
+  matchRef = doc(
+    db,
+    "assistantMatches",
+    user.uid,
+    "matches",
+    matchId
+  );
+
+  snap = await getDoc(matchRef);
+
+  // fallback → coach sin kamp
+  if (!snap.exists()) {
     matchRef = doc(db, "matches", matchId);
-  } else {
-    matchRef = doc(
-      db,
-      "assistantMatches",
-      user.uid,
-      "matches",
-      matchId
-    );
+    snap = await getDoc(matchRef);
   }
 
-  const snap = await getDoc(matchRef);
+} else {
+  // coach
+  matchRef = doc(db, "matches", matchId);
+  snap = await getDoc(matchRef);
+}
+
+if (!snap.exists()) return;
+
+snap = await getDoc(matchRef);
   if (!snap.exists()) return;
 
   const data = snap.data();
