@@ -1632,30 +1632,29 @@ async function saveNewMatch() {
      BESTEM HVOR DET SKAL LAGRES BASERT PÅ ROLLE
      ====================================================== */
 
-  let matchRef;
+let matchRef;
+let snap;
 
-  if (matchState.userRole === "coach") {
-    matchRef = doc(
-      db,
-      "matches",
-      matchState.matchId
-    );
+if (matchState.userRole === "assistantCoach") {
+
+  // 🔹 prøv assistant først
+  matchRef = doc(db, "assistantMatches", user.uid, "matches", matchId);
+  snap = await getDoc(matchRef);
+
+  console.log("Prøver assistant:", snap.exists());
+
+  // 🔹 fallback til coach
+  if (!snap.exists()) {
+    matchRef = doc(db, "matches", matchId);
+    snap = await getDoc(matchRef);
+
+    console.log("Fallback til coach:", snap.exists());
   }
 
-  else if (matchState.userRole === "assistantCoach") {
-    matchRef = doc(
-      db,
-      "assistantMatches",
-      user.uid,
-      "matches",
-      matchState.matchId
-    );
-  }
-
-  else {
-    console.error("Ugyldig rolle:", matchState.userRole);
-    return;
-  }
+} else {
+  matchRef = doc(db, "matches", matchId);
+  snap = await getDoc(matchRef);
+}
 
   /* ======================================================
      DATA
@@ -1960,7 +1959,12 @@ if (matchState.userRole === "assistantCoach") {
   snap = await getDoc(matchRef);
 }
 
-if (!snap.exists()) return;
+if (!snap.exists()) {
+  console.log("❌ Fant ikke kamp i Firestore");
+  return;
+}
+
+console.log("✅ Fant kamp:", snap.data());
 
 snap = await getDoc(matchRef);
   if (!snap.exists()) return;
@@ -2139,9 +2143,14 @@ setTimeout(() => {
 
 startScreen.style.display = "none";
 
-if (matchState.status === "NOT_STARTED" || matchState.status === "UPCOMING") {
+if (matchState.status === "NOT_STARTED") {
   preMatch.classList.remove("hidden");
   matchUI.classList.add("hidden");
+}
+
+if (matchState.status === "UPCOMING") {
+  preMatch.classList.remove("hidden");
+  matchUI.classList.remove("hidden"); // ✅ viktig
 }
 
 if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
