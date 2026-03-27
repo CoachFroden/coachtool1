@@ -30,18 +30,33 @@ const firebaseConfig = {
 initializeApp(firebaseConfig);
 const auth = getAuth();
 
-onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    window.location.href = "index.html";
-    return;
-  }
-});
-
 const db = getFirestore();
 
 function getMatchIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
   return params.get("matchId");
+}
+
+function getMatchRef() {
+  const user = auth.currentUser;
+
+  // 🔴 STOPP hvis auth ikke er klar
+  if (!user || !matchState.userRole || !matchState.matchId) {
+    console.error("Auth ikke klar enda");
+    return null;
+  }
+
+  if (matchState.userRole === "coach") {
+    return doc(db, "matches", matchState.matchId);
+  }
+
+  return doc(
+    db,
+    "assistantMatches",
+    user.uid,
+    "matches",
+    matchState.matchId
+  );
 }
 
 function setLoginLoading(isLoading) {
@@ -178,8 +193,13 @@ const newMatchBtn = document.getElementById("newMatchBtn");
 const preMatch = document.getElementById("preMatchMeta");
 const startScreen = document.getElementById("startScreen");
 const matchUI = document.getElementById("matchUI");
-  const eventLog = document.getElementById("event-log");
-    const teams = document.querySelector(".teams");
+const eventLog = document.getElementById("event-log");
+const teams = document.querySelector(".teams");
+  const clockSection = document.getElementById("clock-section");
+    const events = document.getElementById("events");
+  const extraEvents = document.getElementById("extra-events");  
+
+
 
 
 
@@ -1638,21 +1658,21 @@ let snap;
 if (matchState.userRole === "assistantCoach") {
 
   // 🔹 prøv assistant først
-  matchRef = doc(db, "assistantMatches", user.uid, "matches", matchId);
+  matchRef = doc(db, "assistantMatches", user.uid, "matches", matchState.matchId);
   snap = await getDoc(matchRef);
 
   console.log("Prøver assistant:", snap.exists());
 
   // 🔹 fallback til coach
   if (!snap.exists()) {
-    matchRef = doc(db, "matches", matchId);
+    matchRef = doc(db, "matches", matchState.matchId);
     snap = await getDoc(matchRef);
 
     console.log("Fallback til coach:", snap.exists());
   }
-
-} else {
-  matchRef = doc(db, "matches", matchId);
+ }
+else {
+  matchRef = doc(db, "matches", matchState.matchId);
   snap = await getDoc(matchRef);
 }
 
@@ -1720,35 +1740,13 @@ async function saveFinalMatch() {
   const user = auth.currentUser;
   if (!user) return;
 
-  let matchRef;
+const matchRef = getMatchRef();
+if (!matchRef) return;
 
-  if (matchState.userRole === "coach") {
-    matchRef = doc(
-      db,
-      "matches",
-      matchState.matchId
-    );
-  }
+const summary = getMatchSummary();
 
-  else if (matchState.userRole === "assistantCoach") {
-    matchRef = doc(
-      db,
-      "assistantMatches",
-      user.uid,
-      "matches",
-      matchState.matchId
-    );
-  }
-
-  else {
-    console.error("Ugyldig rolle ved lagring");
-    return;
-  }
-
-  const summary = getMatchSummary();
-
-  await setDoc(
-    matchRef,
+await setDoc(
+  matchRef,
     {
       ...summary,
       status: "ENDED",
@@ -1769,21 +1767,10 @@ async function saveLiveUpdate() {
   const user = auth.currentUser;
   if (!user) return;
 
-  let matchRef;
+  const matchRef = getMatchRef();
+  if (!matchRef) return;   // 👈 LEGG TIL DENNE
 
-  if (matchState.userRole === "coach") {
-    matchRef = doc(db, "matches", matchState.matchId);
-  } else {
-    matchRef = doc(
-      db,
-      "assistantMatches",
-      user.uid,
-      "matches",
-      matchState.matchId
-    );
-  }
-
-await setDoc(matchRef, {
+  await setDoc(matchRef, {
   score: matchState.score,
   events: matchState.events,
   period: matchState.period,
@@ -2006,6 +1993,19 @@ snap = await getDoc(matchRef);
   ========================= */
 
   matchState.players.home = data.players || {};
+  // 🔥 FULL fallback hvis ingenting finnes (kritisk)
+if (!data.players && (!data.squad || !data.squad.present?.length)) {
+  HOME_SQUAD.forEach(p => {
+    matchState.players.home[p.id] = {
+      id: p.id,
+      name: p.name,
+      present: true,
+      starter: false,
+      intervals: [],
+      cards: []
+    };
+  });
+}
   matchState.squad.onField.home = [];
 
   // 🔥 sørg for struktur
@@ -2175,9 +2175,6 @@ if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
 document.addEventListener("DOMContentLoaded", () => {
 
   const startNewMatchBtn = document.getElementById("startNewMatchBtn");
-  const clockSection = document.getElementById("clock-section");
-  const events = document.getElementById("events");
-  const extraEvents = document.getElementById("extra-events");  
   const activeMatchId = localStorage.getItem("activeMatchId");
 
 if (activeMatchId) {
