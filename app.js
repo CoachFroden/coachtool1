@@ -43,10 +43,15 @@ function getMatchRef() {
   const user = auth.currentUser;
 
   // 🔴 STOPP hvis auth ikke er klar
-  if (!user || !matchState.userRole || !matchState.matchId) {
-    console.error("Auth ikke klar enda");
-    return null;
-  }
+if (!user || !matchState.userRole) {
+  console.error("Auth ikke klar enda");
+  return null;
+}
+
+if (!matchState.matchId) {
+  console.warn("matchId mangler – hopper over lagring");
+  return null;
+}
 
   if (matchState.userRole === "coach") {
     return doc(db, "matches", matchState.matchId);
@@ -266,16 +271,35 @@ function startClock() {
 }
 
 async function findLiveMatch() {
-  const q = query(
-    collection(db, "matches"),
-    where("status", "in", ["LIVE", "PAUSED"])
+  const user = auth.currentUser;
+  if (!user) return null;
+
+  // 🔍 Coach-kamper (men kun dine)
+  const coachSnap = await getDocs(
+    query(
+      collection(db, "matches"),
+      where("ownerUid", "==", user.uid),
+      where("status", "in", ["LIVE", "PAUSED"])
+    )
   );
 
-  const snap = await getDocs(q);
+  if (!coachSnap.empty) {
+    return coachSnap.docs[0];
+  }
 
-  if (snap.empty) return null;
+  // 🔍 Assistant-kamper (kun dine)
+  const assistantSnap = await getDocs(
+    query(
+      collection(db, "assistantMatches", user.uid, "matches"),
+      where("status", "in", ["LIVE", "PAUSED"])
+    )
+  );
 
-  return snap.docs[0];
+  if (!assistantSnap.empty) {
+    return assistantSnap.docs[0];
+  }
+
+  return null;
 }
    
  function getCurrentMatchTimeMs() {
@@ -755,11 +779,11 @@ matchState.timer.startTimestamp = Date.now();
 matchState.startedAt = new Date().toISOString();
 matchState.timer.elapsedMs = 0;
 
-// 🔥 FLYTT DENNE OPP
-addEvent("Kamp startet");
+
 
 // 🔥 så lagrer du
 await saveNewMatch();
+addEvent("Kamp startet");
 await saveLiveUpdate();
 
 lockMatchMetaInputs();
@@ -1820,6 +1844,12 @@ const matchData = {
     our: 0,
     their: 0
   },
+  
+  timer: {
+  elapsedMs: 0,
+  startTimestamp: Date.now()
+},
+
   squad: {
     present,
     starters
@@ -2029,9 +2059,16 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 setInterval(() => {
-  if (matchState.status === "LIVE" && matchState.timer.startTimestamp) {
+  if (matchState.status === "LIVE") {
+    const ref = getMatchRef();
+
+    if (!ref) {
+      console.warn("Autosave hoppet over (mangler matchRef)");
+      return;
+    }
+
     saveLiveUpdate();
-    console.log("Autosave (5 min)");
+    console.log("Autosave (3 min)");
   }
 }, 3 * 60 * 1000);
 
