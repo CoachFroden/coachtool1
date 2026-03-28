@@ -752,10 +752,15 @@ localStorage.setItem("activeMatchId", matchState.matchId);
 matchState.status = "LIVE";
 matchState.period = 1;
 matchState.timer.startTimestamp = Date.now();
+matchState.startedAt = new Date().toISOString();
 matchState.timer.elapsedMs = 0;
 
-saveNewMatch();
-saveLiveUpdate();
+// 🔥 FLYTT DENNE OPP
+addEvent("Kamp startet");
+
+// 🔥 så lagrer du
+await saveNewMatch();
+await saveLiveUpdate();
 
 lockMatchMetaInputs();
 periodIndicator.textContent = "1. omgang";
@@ -764,7 +769,6 @@ startPlayingTime();
 startClock();
 
 updateControls();
-addEvent("Kamp startet");
 updateUIByStatus();
 
 setTimeout(() => {
@@ -1809,24 +1813,27 @@ const meta = {
     }
   });
 
-  const matchData = {
-    meta,
-    status: "LIVE",
-    score: {
-      our: 0,
-      their: 0
-    },
-    squad: {
-      present,
-      starters
-    },
-    ownerUid: user.uid,
-    role: matchState.userRole,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  };
+const matchData = {
+  meta,
+  status: "LIVE",
+  score: {
+    our: 0,
+    their: 0
+  },
+  squad: {
+    present,
+    starters
+  },
 
-  await setDoc(matchRef, matchData);
+  startedAt: serverTimestamp(), // 🔥 LEGG TIL DENNE
+
+  ownerUid: user.uid,
+  role: matchState.userRole,
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp()
+};
+
+  await setDoc(matchRef, matchData, { merge: true });
 
   console.log(
     "Kamp opprettet:",
@@ -1852,24 +1859,21 @@ async function saveFinalMatch() {
 
   const summary = getMatchSummary();
 
-  await setDoc(
-    matchRef,
-    {
-      // 🔥 LEGG TIL DETTE
-      meta: matchState.meta,
-      score: matchState.score,
-      events: matchState.events,
+const data = {
+  meta: matchState.meta,
+  score: matchState.score,
+  events: matchState.events,
+  ...summary,
+  status: "ENDED",
+  updatedAt: serverTimestamp()
+};
 
-      // 🔥 DETTE ER VIKTIG FOR STATISTIKK
-      type: matchState.meta.type,
+// 🔥 legg til type kun hvis den finnes
+if (matchState.meta?.type) {
+  data.type = matchState.meta.type;
+}
 
-      // resten
-      ...summary,
-      status: "ENDED",
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
+await setDoc(matchRef, data, { merge: true });
 
   console.log("Kamp avsluttet:", matchState.matchId);
 }
@@ -1879,25 +1883,34 @@ async function saveLiveUpdate() {
   if (!user) return;
 
   const matchRef = getMatchRef();
-  if (!matchRef) return;   // 👈 LEGG TIL DENNE
+  if (!matchRef) return;
 
-  await setDoc(matchRef, {
-  score: matchState.score,
-  events: matchState.events,
-  period: matchState.period,
-  status: matchState.status,
-  timer: {
-    elapsedMs: matchState.timer.elapsedMs,
-    startTimestamp: matchState.timer.startTimestamp
-  },
+  const data = {
+    score: matchState.score,
+    events: matchState.events,
+    period: matchState.period,
+    status: matchState.status,
+    timer: {
+      elapsedMs: matchState.timer.elapsedMs,
+      startTimestamp: matchState.timer.startTimestamp
+    },
+    players: matchState.players.home,
+    onField: matchState.squad.onField.home,
+    updatedAt: serverTimestamp()
+  };
 
-  // 🔥 LEGG TIL DENNE
-  players: matchState.players.home,
-  onField: matchState.squad.onField.home,
+  // 🔥 legg kun til hvis de finnes
+  if (matchState.startedAt) {
+    data.startedAt = matchState.startedAt;
+  }
 
-  updatedAt: serverTimestamp()
-}, { merge: true });
-localStorage.setItem("lastMatchState", JSON.stringify(matchState));
+  if (matchState.meta?.type) {
+    data.type = matchState.meta.type;
+  }
+
+  await setDoc(matchRef, data, { merge: true });
+
+  localStorage.setItem("lastMatchState", JSON.stringify(matchState));
 }
 
 
@@ -2198,8 +2211,12 @@ matchState.squad.onField.home.forEach(id => {
 
 if (matchState.status === "LIVE") {
 
-  matchState.timer.startTimestamp =
-    data.timer?.startTimestamp ?? Date.now();
+if (data.timer?.startTimestamp) {
+  matchState.timer.startTimestamp = data.timer.startTimestamp;
+} else {
+  console.warn("Mangler startTimestamp – bruker nåtid (fallback)");
+  matchState.timer.startTimestamp = Date.now();
+}
 
   // 🔥 SETT RIKTIG OMGANGSTEKST
   if (matchState.period === 1) {
