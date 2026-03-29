@@ -17,6 +17,20 @@ import {
   getToken
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-messaging.js";
 
+let exerciseList = [];
+
+async function loadExerciseLibrary() {
+  const res = await fetch("./ovelser.json");
+  exerciseList = await res.json();
+}
+
+function getExerciseOptionsHTML(selectedValue = "") {
+  return exerciseList.map(ex => {
+    const selected = ex.file === selectedValue ? "selected" : "";
+    return `<option value="${ex.file}" ${selected}>${ex.name}</option>`;
+  }).join("");
+}
+
 function getWeekNumber() {
 
   const date = new Date();
@@ -64,6 +78,7 @@ if(weekSelect){
   }
   
   weekSelect.value = "week" + currentWeek;
+await loadExerciseLibrary();
 loadWeekData();
 
 }
@@ -232,9 +247,8 @@ window.addExercise = function(){
     <input placeholder="Tittel på øvelse" class="exerciseTitle">
 
     <select class="exerciseVideo">
-      <option value="kantlop-innlegg.mp4">Kantløp innlegg</option>
-      <option value="kantoverlapp.mp4">Kantoverlapp</option>
-    </select>
+  ${getExerciseOptionsHTML()}
+</select>
   `;
 
   container.appendChild(div);
@@ -289,9 +303,8 @@ async function loadWeekData(){
         <input class="exerciseTitle" value="${ex.title}">
 
         <select class="exerciseVideo">
-          <option value="kantlop-innlegg.mp4">Kantløp innlegg</option>
-          <option value="kantoverlapp.mp4">Kantoverlapp</option>
-        </select>
+  ${getExerciseOptionsHTML(ex.video.replace("ovelser/",""))}
+</select>
       `;
 
       container.appendChild(div);
