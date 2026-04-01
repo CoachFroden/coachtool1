@@ -1,6 +1,5 @@
 import { db } from "./firebase-refleksjon.js";
-import { collection, getDocs } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-
+import { collection, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 const list = document.getElementById("list");
 
 async function loadData(){
@@ -13,15 +12,20 @@ async function loadData(){
     const data = doc.data();
 
     const name = data.navn || data.name; // fallback hvis ulikt navn
+    const uid = data.uid;
+	
+    if(!players[uid]){
+  players[uid] = {
+    name: name,
+    exercises: []
+  };
+}
 
-    if(!players[name]){
-      players[name] = [];
-    }
-
-    players[name].push({
+players[uid].exercises.push({
   exercise: data.exercise,
   category: data.category
 });
+
   });
 window.playersData = players;
   render(players);
@@ -32,9 +36,11 @@ function render(players){
   const list = document.getElementById("list");
   list.innerHTML = "";
 
-  Object.keys(players).forEach(name => {
+  Object.keys(players).forEach(uid => {
 
-    const exercises = players[name];
+    const player = players[uid];
+    const exercises = player.exercises;
+    const name = player.name;
 	const total = exercises.length;
 
     let counts = {};
@@ -49,32 +55,41 @@ function render(players){
     const div = document.createElement("div");
 div.classList.add("playerCard");
 
+const deleteBtn = document.createElement("button");
+deleteBtn.innerHTML = "🗑️ <span>Slett logg</span>";
+deleteBtn.classList.add("deleteBtn");
+
+deleteBtn.onclick = (e) => {
+  e.stopPropagation(); // viktig!
+  deletePlayerLogs(uid);
+};
+
+div.appendChild(deleteBtn);
+
 let html = `
-  <div class="playerName" onclick="togglePlayer('${name}')">
+  <button class="deleteBtn" onclick="deletePlayerLogs('${uid}')">
+    🗑️ Slett logg
+  </button>
+
+  <div class="playerName" onclick="togglePlayer('${uid}')">
     ${name} (${total} økter)
   </div>
 
-  <div class="playerDetails" id="player-${name}" data-player="${name}" style="display:none;"></div>
+  <div class="playerDetails" id="player-${uid}" data-player="${name}" style="display:none;"></div>
 `;
-	
-	if(uniqueExercises <= 2){
-  html += `<div class="warning">⚠️ Lite variasjon</div>`;
-}
 
-
-
-    div.innerHTML = html;
+div.innerHTML = html;
 
     list.appendChild(div);
 
   });
 }
 
-window.showPlayer = function(name){
+window.showPlayer = function(uid){
+  const playerData = window.playersData[uid].exercises;
 
   const container = document.getElementById("list");
 
-  const playerData = window.playersData[name];
 
   let html = `<button class="backBtn" onclick="location.reload()">← Tilbake</button>`;
   html += `<h2 style="margin-top:10px;">${name}</h2>`;
@@ -103,7 +118,7 @@ const uniqueCategories = Object.keys(counts).length;
   container.innerHTML = html;
 };
 
-window.togglePlayer = function(name){
+window.togglePlayer = function(uid){
 
   const all = document.querySelectorAll(".playerDetails");
 
@@ -112,7 +127,7 @@ window.togglePlayer = function(name){
     el.style.display = "none";
   });
 
-  const el = document.getElementById(`player-${name}`);
+  const el = document.getElementById(`player-${uid}`);
 
   // hvis den vi klikker på allerede var åpen → ikke åpne igjen
   if(el.dataset.open === "true"){
@@ -130,7 +145,7 @@ window.togglePlayer = function(name){
   // bygg innhold hvis tom
   if(!el.innerHTML){
 
-    const data = window.playersData[name];
+    const data = window.playersData[uid].exercises;
 
     let counts = {};
 
@@ -156,7 +171,7 @@ html += `<div class="categoryFilters">`;
 
 // 🔹 KUN kategorier her
 Object.entries(categoryCounts).forEach(([cat, count]) => {
-  html += `<button onclick="filterExercises('${name}', '${cat}')">
+  html += `<button onclick="filterExercises('${uid}', '${cat}')">
     ${cat} (${count})
   </button>`;
 });
@@ -166,7 +181,7 @@ html += `</div>`;
 // 🔹 "Alle" separat
 html += `
   <div class="allWrapper">
-    <button class="allBtn" onclick="filterExercises('${name}', 'all')">Alle</button>
+    <button class="allBtn" onclick="filterExercises('${uid}', 'all')">Alle</button>
   </div>
 `;
 
@@ -218,10 +233,10 @@ if(index === 0){
 
 };
 
-window.filterExercises = function(name, category){
+window.filterExercises = function(uid, category){
+const data = window.playersData[uid].exercises;
 
-  const container = document.getElementById(`player-${name}`);
-  const data = window.playersData[name];
+  const container = document.getElementById(`player-${uid}`);
 
   let filtered = data;
 
@@ -271,6 +286,29 @@ window.filterExercises = function(name, category){
   const allBtn = container.querySelector(".allWrapper").outerHTML;
 
   container.innerHTML = filters + allBtn + html;
+};
+
+window.deletePlayerLogs = async function(uid){
+
+  if(!confirm("Slette all logg?")) return;
+
+  const snap = await getDocs(collection(db, "exerciseLogs"));
+
+  const deletes = [];
+
+  snap.forEach(d => {
+    const data = d.data();
+
+    if(data.uid === uid){
+      deletes.push(deleteDoc(doc(db, "exerciseLogs", d.id)));
+    }
+  });
+
+  await Promise.all(deletes);
+
+  alert("Logg slettet");
+
+  loadData();
 };
 
 loadData();
