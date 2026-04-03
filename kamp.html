@@ -319,11 +319,35 @@
      <p id="starterCounter" style="text-align:center; font-size:0.8rem; opacity:0.7; margin-bottom:8px;">
   Startere: 0 / 11
 </p>
+<button id="loanPlayersBtn" class="secondary-btn">
+  ➕ Lånespillere
+</button>
     <ul id="squadList"></ul>
 
     <div class="modal-actions">
       <button id="cancelSquadBtn">Avbryt</button>
       <button id="saveSquadBtn">Lagre</button>
+    </div>
+  </div>
+</div>
+
+	<div id="loanModal" class="modal hidden">
+  <div class="modal-content">
+    <h3>Lånespillere</h3>
+
+    <input
+  type="number"
+  id="loanCountInput"
+  class="input-modern"
+  placeholder="Antall lånespillere"
+  min="1"
+/>
+
+    <div id="loanNamesContainer"></div>
+
+    <div class="modal-actions">
+      <button id="cancelLoanBtn">Avbryt</button>
+      <button id="confirmLoanBtn">OK</button>
     </div>
   </div>
 </div>

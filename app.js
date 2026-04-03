@@ -43,8 +43,8 @@ function getMatchRef() {
   const user = auth.currentUser;
 
   // 🔴 STOPP hvis auth ikke er klar
-if (!user || !matchState.userRole) {
-  console.error("Auth ikke klar enda");
+if (!user || !matchState.userRole || !matchState.matchId) {
+  console.warn("MatchRef ikke klar enda");
   return null;
 }
 
@@ -122,6 +122,10 @@ const matchState = {
   events: []
 };
 
+function isReadyForFirestore() {
+  return auth.currentUser && matchState.userRole && matchState.matchId;
+}
+
 
 /* ======================================================
    ELEMENT REFERENCES
@@ -145,8 +149,8 @@ const HOME_SQUAD = [
   { id: "h15", name: "Thage" },
   { id: "h16", name: "Theodor" },
   { id: "h17", name: "Torvald" },
-  { id: "h18", name: "William" },
- // { id: "h19", name: "Lånespiller 1" },
+ // { id: "h18", name: "William" },
+ //{ id: "h19", name: "Lån 1" },
  // { id: "h20", name: "Lånespiller 2" },
  // { id: "h21", name: "Lånespiller 3" },
  // { id: "h22", name: "Lånespiller 4" },
@@ -205,10 +209,61 @@ const teams = document.querySelector(".teams");
   const clockSection = document.getElementById("clock-section");
     const events = document.getElementById("events");
   const extraEvents = document.getElementById("extra-events");  
+  
+  const loanBtn = document.getElementById("loanPlayersBtn");
+const loanModal = document.getElementById("loanModal");
+const loanCountInput = document.getElementById("loanCountInput");
+const loanNamesContainer = document.getElementById("loanNamesContainer");
 
+const cancelLoanBtn = document.getElementById("cancelLoanBtn");
+const confirmLoanBtn = document.getElementById("confirmLoanBtn");
 
+loanBtn.addEventListener("click", () => {
+  loanModal.classList.remove("hidden");
+});
 
+cancelLoanBtn.addEventListener("click", () => {
+  loanModal.classList.add("hidden");
+});
 
+loanCountInput.addEventListener("input", () => {
+  const count = Number(loanCountInput.value) || 0;
+
+  loanNamesContainer.innerHTML = "";
+
+  for (let i = 0; i < count; i++) {
+    const input = document.createElement("input"); // 🔥 DENNE MANGLER
+    input.type = "text";
+    input.placeholder = `Navn lånespiller ${i + 1}`;
+    input.className = "loanNameInput input-modern";
+
+    loanNamesContainer.appendChild(input);
+  }
+});
+
+confirmLoanBtn.addEventListener("click", () => {
+  const inputs = document.querySelectorAll(".loanNameInput");
+
+  inputs.forEach((input, index) => {
+    const name = input.value.trim();
+    if (!name) return;
+
+    const id = "loan_" + Date.now() + "_" + index;
+
+    matchState.players.home[id] = {
+      id,
+      name,
+      intervals: [],
+      cards: []
+    };
+
+    // legg til i squad (ikke automatisk på banen)
+  });
+
+  openSquadModal(); // 🔥 viktig – oppdater UI
+
+  loanModal.classList.add("hidden");
+});
 
 function populateGoalScorers(team) {
   goalScorerSelect.innerHTML = "";
@@ -362,7 +417,6 @@ addEvent({
   }
 
   updateScoreboard();
-  saveLiveUpdate();
 }
    
  function formatTime(ms) {
@@ -1363,7 +1417,7 @@ if (squadLocked) {
   saveBtn.style.display = "inline-block";
 }
 
-  HOME_SQUAD.forEach(player => {
+  Object.values(matchState.players.home).forEach(player => {
   const li = document.createElement("li");
   li.className = "squad-row";
   li.dataset.playerId = player.id;
@@ -1446,6 +1500,10 @@ starterCheckbox.addEventListener("change", (e) => {
   const nameSpan = document.createElement("span");
   nameSpan.className = "player-name";
   nameSpan.textContent = player.name;
+
+if (player.id.startsWith("loan_")) {
+  nameSpan.style.color = "#60a5fa"; // blå
+}
 
   /* ===== SETT SAMMEN ===== */
   li.append(presentLabel, starterLabel, nameSpan);
@@ -1608,35 +1666,48 @@ document.getElementById("saveSquadBtn").addEventListener("click", () => {
     return;
   }
 
-  matchState.players.home = {};
-  matchState.squad.onField.home = [];
+  const starterCount =
+    document.querySelectorAll(".squad-row.is-starter").length;
 
-  // resten av koden din...
-
-document.querySelectorAll("#squadList li").forEach(li => {
-  const id = li.dataset.playerId;
-  const [present, starter] = li.querySelectorAll("input");
-
-  const base = HOME_SQUAD.find(p => p.id === id);
-
-  // 🔴 Hvis ikke tilstede → hopp over helt
-  if (!present.checked) {
+  if (starterCount !== MAX_STARTERS) {
+    alert(`Du må velge akkurat ${MAX_STARTERS} startere`);
     return;
   }
 
-  // ✅ Kun tilstedeværende spillere legges inn
-  matchState.players.home[id] = {
-    id,
-    name: base.name,
-    present: true,
-    starter: starter.checked,
-    intervals: [],
-    cards: []
-  };
+  const newPlayers = {};
+  const newOnField = [];
 
-  if (starter.checked) {
-    addToField(id);
-  }
+  document.querySelectorAll("#squadList li").forEach(li => {
+    const id = li.dataset.playerId;
+    const [present, starter] = li.querySelectorAll("input");
+
+    const existing = matchState.players.home[id];
+
+    if (!present.checked) return;
+
+    newPlayers[id] = {
+      id,
+      name: existing.name,
+      present: true,
+      starter: starter.checked,
+      intervals: [],
+      cards: existing.cards || []
+    };
+
+    if (starter.checked) {
+      newOnField.push(id);
+    }
+  });
+
+  matchState.players.home = newPlayers;
+  matchState.squad.onField.home = newOnField;
+
+  matchState.lineupConfirmed = true;
+
+  document.getElementById("matchUI").classList.remove("hidden");
+  updateControls();
+  document.getElementById("squadModal").classList.add("hidden");
+  updatePlayingTimeUI();
 });
 
 matchState.lineupConfirmed = true;
@@ -1644,8 +1715,6 @@ document.getElementById("matchUI").classList.remove("hidden");
 updateControls();
 document.getElementById("squadModal").classList.add("hidden");
 updatePlayingTimeUI();
-
-});
 
 document.getElementById("cancelSquadBtn")
   .addEventListener("click", () =>
@@ -1683,7 +1752,7 @@ function updateStarterCounter() {
   counter.textContent = `Startere: ${count} / ${MAX_STARTERS}`;
 
   // kun lov å lagre når EXACT 11
-  saveBtn.disabled = count !== MAX_STARTERS;
+  saveBtn.disabled = false;
 }
 
 function getMatchSummary() {
@@ -1909,6 +1978,11 @@ await setDoc(matchRef, data, { merge: true });
 }
 
 async function saveLiveUpdate() {
+	if (!isReadyForFirestore()) {
+  console.warn("Firestore ikke klar – hopper over save");
+  return;
+}
+	
   const user = auth.currentUser;
   if (!user) return;
 
@@ -2059,7 +2133,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 setInterval(() => {
-  if (matchState.status === "LIVE") {
+  if (matchState.status === "LIVE" && isReadyForFirestore()) {
     const ref = getMatchRef();
 
     if (!ref) {
