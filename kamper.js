@@ -795,5 +795,5 @@ formationEl.onclick = () => {
 };
 
 window.goBack = function () {
-  window.location.href = "minside.html";
+  window.location.href = "fremside.html";
 };
