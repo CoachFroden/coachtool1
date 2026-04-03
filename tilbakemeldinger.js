@@ -20,6 +20,38 @@ import {
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-functions.js";
 import { functions } from "./firebase-refleksjon.js";
 
+function generateAutoFeedback(r, data) {
+
+  if (!r) return "";
+
+  const effortText =
+    r.effort >= 4 ? "veldig god innsats" :
+    r.effort == 3 ? "grei innsats" :
+    "lav innsats";
+
+  const energyText =
+    r.energy >= 4 ? "god energi" :
+    r.energy == 3 ? "ok energi" :
+    "lav energi";
+
+  const funText =
+    r.fun >= 4 ? "virker å ha trivdes godt" :
+    r.fun == 3 ? "hadde en ok opplevelse" :
+    "hadde en svak opplevelse";
+
+  const focusText =
+    r.more && r.more.length
+      ? `Jobb videre med ${r.more.join(", ")}.`
+      : "";
+
+  return `
+Du viser ${effortText} og ${energyText} denne økta. 
+Du ${funText}.
+
+${focusText}
+`.trim();
+}
+
 let currentFeedbackDocId = null;
 
 const reflectionSelect = document.getElementById("reflectionSelect");
@@ -80,8 +112,8 @@ async function loadPlayers() {
 }
 
 async function loadPreviousFeedback() {
-	
-reflectionSelect.innerHTML = `<option value="">Velg refleksjon</option>`;
+
+  reflectionSelect.innerHTML = `<option value="">Velg refleksjon</option>`;
 
   const playerId = document.getElementById("playerSelect").value;
   const textarea = document.getElementById("feedbackText");
@@ -90,89 +122,85 @@ reflectionSelect.innerHTML = `<option value="">Velg refleksjon</option>`;
   currentFeedbackDocId = null;
 
   if (!playerId) return;
-  
+
   // hent refleksjoner
-const reflectionsSnap = await getDocs(
-  collection(db, "refleksjoner", playerId, "entries")
-);
+  const reflectionsSnap = await getDocs(
+    collection(db, "refleksjoner", playerId, "entries")
+  );
 
-const feedbackSnap = await getDocs(
-  query(
-    collection(db, "feedback"),
-    where("playerId", "==", playerId)
-  )
-);
+  const feedbackSnap = await getDocs(
+    query(
+      collection(db, "feedback"),
+      where("playerId", "==", playerId)
+    )
+  );
 
-const feedbackReflectionIds = new Set(
-  feedbackSnap.docs.map(d => d.data().reflectionId)
-);
+  const reflections = reflectionsSnap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.week - a.week;
+    });
 
-const reflections = reflectionsSnap.docs
-  .map(d => ({ id: d.id, ...d.data() }))
-  .sort((a, b) => {
+  let currentWeek = null;
 
-    if (a.year !== b.year) return b.year - a.year;
-    return b.week - a.week;
+  const dayMap = {
+    Mon: "Mandag",
+    Tue: "Tirsdag",
+    Wed: "Onsdag",
+    Thu: "Torsdag",
+    Fri: "Fredag",
+    Sat: "Lørdag",
+    Sun: "Søndag"
+  };
 
+  for (const data of reflections) {
+
+  if (data.week === undefined || data.type === undefined) continue;
+
+  const r =
+  (data.training && data.training.effort != null ? data.training : null) ||
+  (data.match && data.match.effort != null ? data.match : null) ||
+  data; // 🔥 fallback til root
+  
+  const funText =
+  r?.fun == 5 ? "Veldig bra"
+  : r?.fun == 4 ? "Bra"
+  : r?.fun == 3 ? "OK"
+  : r?.fun ? "Dårlig"
+  : "-";
+
+  if (!r || r.effort == null || r.energy == null) continue;
+
+  let statusIcon = "⚪";
+
+  const feedbackDoc = feedbackSnap.docs.find(d => {
+    return d.data().reflectionId === data.id;
   });
 
-let currentWeek = null;
-
-const dayMap = {
-  Mon: "Mandag",
-  Tue: "Tirsdag",
-  Wed: "Onsdag",
-  Thu: "Torsdag",
-  Fri: "Fredag",
-  Sat: "Lørdag",
-  Sun: "Søndag"
-};
-
-for (const data of reflections) {
-	
-let statusIcon = "⚪";
-
-const feedbackDoc = feedbackSnap.docs.find(d => {
-  return d.data().reflectionId === data.id;
-});
-
-if (feedbackDoc) {
-
-  const status = feedbackDoc.data().status;
-
-  if (status === "sent") {
-    statusIcon = "🟢";
-  } else {
-    statusIcon = "🟡";
+  if (feedbackDoc) {
+    const status = feedbackDoc.data().status;
+    statusIcon = status === "sent" ? "🟢" : "🟡";
   }
 
-}
-
   if (currentWeek !== data.week) {
-
     const weekHeader = document.createElement("option");
     weekHeader.textContent = `— Uke ${data.week} —`;
     weekHeader.disabled = true;
-
     reflectionSelect.appendChild(weekHeader);
-
     currentWeek = data.week;
   }
 
   const option = document.createElement("option");
-
-  const typeIcon = data.type === "match" ? "🏆 Kamp" : "🔵 ⚽ Trening";
-
   option.value = data.id;
 
-const dayText = dayMap[data.day] || data.day;
-const typeText = data.type === "match" ? "Kamp" : "Trening";
+  const typeText = data.type === "match" ? "Kamp" : "Trening";
+  const dayText = dayMap[data.day] || data.day || "";
 
-option.textContent =
-  `${statusIcon} ${typeText} – ${dayText}`;
+  option.textContent =
+    `${statusIcon} ${typeText} – ${dayText || `Uke ${data.week}`}`;
 
   reflectionSelect.appendChild(option);
-
 }
 }
 /* ==============================
@@ -182,6 +210,7 @@ option.textContent =
 const generateBtn = document.getElementById("generateBtn");
 
 reflectionSelect.addEventListener("change", async () => {
+	const textarea = document.getElementById("feedbackText");
 
   const feedbackType = document.getElementById("feedbackType");
 
@@ -228,14 +257,26 @@ if (!feedbackSnap.empty) {
 
   const data = feedbackSnap.docs[0].data();
 
-  textarea.value = data.editedText || data.feedbackText || "";
-
+  textarea.value = data.editedText || data.generatedText || "";
   currentFeedbackDocId = feedbackSnap.docs[0].id;
 
 } else {
 
-  textarea.value = "";
-  currentFeedbackDocId = null;
+  if (reflectionDoc.exists()) {
+
+    const data = reflectionDoc.data();
+
+    const r =
+      (data.training && data.training.effort != null ? data.training : null) ||
+      (data.match && data.match.effort != null ? data.match : null) ||
+      data;
+
+    const autoText = generateAutoFeedback(r, data);
+
+    textarea.value = autoText;   // ✅ nå funker det
+    currentFeedbackDocId = null;
+
+  }
 
 }
 
@@ -253,25 +294,45 @@ const dayMap = {
   Sun: "Søndag"
 };
 
-const dayText = dayMap[data.day] || data.day;
+const dayText = dayMap[data.day] || data.day || "";
+
+const r =
+  (data.training && data.training.effort != null ? data.training : null) ||
+  (data.match && data.match.effort != null ? data.match : null) ||
+  data; // 🔥 fallback til root
+  
+  const funText =
+  r?.fun == 5 ? "Veldig bra"
+  : r?.fun == 4 ? "Bra"
+  : r?.fun == 3 ? "OK"
+  : r?.fun ? "Dårlig"
+  : "-";
+  
+  const autoText = generateAutoFeedback(r, data);
 
 preview.innerHTML = `
+
+<div class="preview-section">
+<span>Forslag til tilbakemelding</span>
+${autoText}
+</div>
+
 <strong class="preview-title">
 ${data.type === "match" ? "🏆 Kamp" : "⚽ Trening"} – ${dayText} (uke ${data.week})
 </strong>
 
 <div class="preview-meta">
-Energi: ${data.energy || "-"} | Innsats: ${data.effort || "-"}
+Energi: ${r?.energy || "-"} | Innsats: ${r?.effort || "-"}
 </div>
 
 <div class="preview-section">
-<span>Fornøyd med</span>
-${data.goodThing || "-"}
+<span>Opplevelse</span>
+${funText}
 </div>
 
 <div class="preview-section">
-<span>Neste uke</span>
-${data.improveThing || "-"}
+<span>Fokus / valg</span>
+${r?.more?.length ? r.more.join(", ") : "-"}
 </div>
 
 <div class="preview-section">

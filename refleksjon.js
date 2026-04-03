@@ -342,12 +342,22 @@ if (goalSnap.exists()) {
 
     <div class="ref-item-body">
       <div class="ref-kv">
-        <div><span class="k">Innsats:</span> ${e.effort || "-"}</div>
-        <div><span class="k">Energi:</span> ${e.energy || "-"}</div>
-        <div><span class="k">Fornøyd med:</span> ${e.goodThing || "-"}</div>
-        <div><span class="k">Neste uke:</span> ${e.improveThing || "-"}</div>
-        <div><span class="k">Til trener:</span> ${e.coachNote || "-"}</div>
-      </div>
+  <div><span class="k">Innsats:</span> ${e.effort ?? "-"}</div>
+  <div><span class="k">Energi:</span> ${e.energy ?? "-"}</div>
+
+  <div><span class="k">Opplevelse:</span> ${
+    e.fun == 5 ? "Veldig bra" :
+    e.fun == 4 ? "Bra" :
+    e.fun == 3 ? "OK" :
+    e.fun ? "Dårlig" : "-"
+  }</div>
+
+  <div><span class="k">Fokus:</span> ${
+    e.more?.length ? e.more.join(", ") : "-"
+  }</div>
+
+  <div><span class="k">Til trener:</span> ${e.coachNote || "-"}</div>
+</div>
     </div>
 
   </div>
@@ -387,56 +397,29 @@ await loadUnreadRefleksjoner();
   
 });
 
-document.addEventListener("click", (event) => {
-
-  const clickedInside = event.target.closest(".ref-item");
-
-  if (!clickedInside) {
-    items.forEach(i => i.classList.remove("open"));
-  }
-
-});
-
 }
-
-const items = document.querySelectorAll(".collapsible");
-
-items.forEach(item => {
-
-  const header = item.querySelector(".ref-item-header");
-
-  header.addEventListener("click", (e) => {
-    e.stopPropagation();
-
-    // Lukk alle først
-    items.forEach(i => i.classList.remove("open"));
-
-    // Åpne valgt
-    item.classList.add("open");
-  });
-
-});
-
-// Klikk utenfor → lukk alle
-document.addEventListener("click", () => {
-  items.forEach(i => i.classList.remove("open"));
-});
 
 const toggleBtn = document.getElementById("approvalToggle");
 const dropdown = document.getElementById("approvalDropdown");
 
 if (toggleBtn && dropdown) {
 
-  toggleBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    dropdown.classList.toggle("open");
-  });
-
-  document.addEventListener("click", () => {
-    dropdown.classList.remove("open");
-  });
-
 }
+
+document.addEventListener("click", (event) => {
+
+  const clickedInside = event.target.closest(".ref-item");
+
+  if (!clickedInside) {
+
+    document
+      .querySelectorAll(".collapsible.open")
+      .forEach(i => i.classList.remove("open"));
+
+  }
+
+}); 
+
 window.goBack = function () {
   window.history.back();
 };
