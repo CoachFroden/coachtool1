@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kamper</title>
+  <link rel="stylesheet" href="kamper.css" />
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <button class="back-btn" onclick="goBack()">←</button>
+  <h1 class="title">Kamper</h1>
+
+  <!-- MAIN -->
+  <div class="container">
+    <div id="nextMatch"></div>
+    <div id="matchGrid"></div>
+  </div>
+
+  <!-- =========================
+       PITCH MODAL (STOR)
+  ========================= -->
+  <div id="pitchModalOverlay" class="modal-overlay">
+    <div class="modal modal-large">
+
+      <!-- HEADER -->
+      <div class="modal-header">
+        <h2 id="pitchModalTitle"></h2>
+        <span id="closePitchModal" class="close">&times;</span>
+      </div>
+
+      <div class="modal-content">
+
+        <!-- MATCH INFO -->
+        <div class="match-info">
+          <div class="match-date" id="pitchModalDate"></div>
+
+          <div class="match-row">
+            <span class="label">Sted</span>
+            <span id="pitchModalVenue"></span>
+          </div>
+
+          <div class="match-row">
+            <span class="label">Type</span>
+            <span id="pitchModalType"></span>
+          </div>
+        </div>
+		
+		<div class="lineup-header">
+  <div class="lineup-title">Lagoppstilling</div>
+  <div id="formationDisplay" class="formation">
+    4-3-3
+  </div>
+</div>
+
+        <!-- PITCH -->
+        <div id="pitch" class="pitch">
+
+          <!-- TOP HALF -->
+          <div class="box box-top"></div>
+          <div class="goal-area goal-top"></div>
+          <div class="goal goal-top"></div>
+          <div class="penalty penalty-top"></div>
+
+          <!-- BOTTOM HALF -->
+          <div class="box box-bottom"></div>
+          <div class="goal-area goal-bottom"></div>
+          <div class="goal goal-bottom"></div>
+          <div class="penalty penalty-bottom"></div>
+
+        </div>
+
+        <!-- ACTION -->
+        <button id="removePlayerBtn" type="button">
+          Fjern valgt spiller
+        </button>
+
+        <!-- PLAYER LIST -->
+        <div id="playerList"></div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================
+       INFO MODAL (LITEN)
+  ========================= -->
+  <div id="infoModalOverlay" class="modal-overlay">
+    <div class="modal modal-small">
+
+      <!-- HEADER -->
+      <div class="modal-header">
+        <h3 id="infoModalTitle"></h3>
+        <span id="closeInfoModal" class="close">&times;</span>
+      </div>
+
+      <div class="modal-content">
+
+        <!-- MATCH INFO -->
+        <div class="match-info">
+          <div class="match-date" id="infoModalDate"></div>
+
+          <div class="match-row">
+            <span class="label">Sted</span>
+            <span id="infoModalVenue"></span>
+          </div>
+
+          <div class="match-row">
+            <span class="label">Type</span>
+            <span id="infoModalType"></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT -->
+  <script type="module" src="kamper.js"></script>
+
+</body>
+</html>
