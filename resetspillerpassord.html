@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Reset spillerpassord</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+
+    .player {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    button {
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    .password-box {
+      margin-top: 20px;
+      padding: 10px;
+      background: #f4f4f4;
+      border: 1px solid #ddd;
+      display: none;
+    }
+
+    .copy-btn {
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Reset passord</h2>
+
+<input type="text" id="search" placeholder="Søk spiller...">
+
+<div id="playerList"></div>
+
+<div id="passwordBox" class="password-box">
+  <strong>Nytt passord:</strong>
+  <span id="passwordText"></span>
+  <button id="copyBtn" class="copy-btn">Kopier</button>
+</div>
+
+<script type="module" src="resetspillerpassord.js"></script>
+
+</body>
+</html>
