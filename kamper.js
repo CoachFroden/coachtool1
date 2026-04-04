@@ -7,7 +7,8 @@ import {
   updateDoc,
   query,
   where,
-  orderBy
+  orderBy,
+  deleteField 
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 /* =========================
@@ -137,8 +138,8 @@ function clearDragState() {
   isDragging = false;
 }
 
-function isPlayerOnPitch(name) {
-  return currentLineup.some((player) => player.name === name);
+function isPlayerOnPitch(player) {
+  return currentLineup.some(p => p.name === player.name);
 }
 
 function updateReadOnlyUI() {
@@ -237,6 +238,25 @@ function highlightSelectedPlayerOnPitch() {
   });
 }
 
+function setupLoanPlayerUI() {
+  const input = document.getElementById("loanPlayerInput");
+  const btn = document.getElementById("addLoanPlayerBtn");
+
+  if (!btn) {
+    console.error("Fant ikke knapp");
+    return;
+  }
+
+  btn.addEventListener("click", async () => {
+    const name = input.value.trim();
+    if (!name) return;
+
+    await addLoanPlayerToMatch(activeMatchId, name);
+
+    input.value = "";
+  });
+}
+
 /* =========================
    FIRESTORE
 ========================= */
@@ -250,16 +270,31 @@ async function loadUserRole() {
   console.log("Role:", userRole);
 }
 
-async function loadPlayers() {
-  const playersSnap = await getDocs(collection(db, "spillere"));
-
+async function loadPlayers(matchId) {
   squad = [];
-  playersSnap.forEach((docSnap) => {
-    const data = docSnap.data();
-    if (data.navn) {
-      squad.push(data.navn);
-    }
-  });
+
+  // faste spillere
+  const playersSnap = await getDocs(collection(db, "spillere"));
+playersSnap.forEach((docSnap) => {
+  const data = docSnap.data();
+  if (data.navn) {
+    squad.push({
+      name: data.navn,
+      isLoan: false
+    });
+  }
+});
+
+  // 🔥 lån
+  if (matchId) {
+    const loanPlayers = await loadLoanPlayers(matchId);
+
+loanPlayers.forEach(player => {
+  if (!squad.find(p => p.name === player.name)) {
+    squad.push(player);
+  }
+});
+  }
 
   console.log("SPILLERE:", squad);
 }
@@ -276,6 +311,80 @@ async function saveLineup() {
   } catch (err) {
     console.error("Feil ved lagring:", err);
   }
+}
+
+async function loadLoanPlayers(matchId) {
+  if (!matchId) return [];
+
+  const snap = await getDoc(doc(db, "matches", matchId));
+  if (!snap.exists()) return [];
+
+  const players = snap.data().players || {};
+
+  return Object.entries(players).map(([id, p]) => ({
+  name: p.name,
+  isLoan: true
+}));
+}
+
+async function removeLoanPlayer(matchId, playerName) {
+  const snap = await getDoc(doc(db, "matches", matchId));
+  if (!snap.exists()) return;
+
+  const players = snap.data().players || {};
+
+  let keyToDelete = null;
+
+  Object.entries(players).forEach(([key, value]) => {
+    if (value.name === playerName) {
+      keyToDelete = key;
+    }
+  });
+
+  if (!keyToDelete) return;
+
+  // 🔥 1. Fjern fra Firestore
+  await updateDoc(doc(db, "matches", matchId), {
+    [`players.${keyToDelete}`]: deleteField()
+  });
+
+  // 🔥 2. Fjern fra banen (VIKTIG)
+  currentLineup = currentLineup.filter(p => p.name !== playerName);
+
+  // 🔥 3. Fjern selection hvis den var valgt
+  if (selectedLineupPlayer?.name === playerName) {
+    selectedLineupPlayer = null;
+  }
+
+  if (selectedPlayerName === playerName) {
+    selectedPlayerName = null;
+  }
+
+  // 🔥 4. Oppdater UI
+  await loadPlayers(matchId);
+  renderLineup();
+  renderPlayerList();
+
+  // 🔥 5. Lagre lineup uten spilleren
+  await saveLineup();
+}
+
+async function addLoanPlayerToMatch(matchId, name) {
+  if (!matchId) {
+    console.error("Ingen matchId");
+    return;
+  }
+
+  const id = "loan_" + Date.now();
+
+  await updateDoc(doc(db, "matches", matchId), {
+    [`players.${id}`]: {
+      name: name
+    }
+  });
+
+  await loadPlayers(matchId);
+  renderPlayerList();
 }
 
 /* =========================
@@ -310,6 +419,9 @@ function setupModalHandlers() {
 async function openPitchModal(match) {
   activeMatchId = match.id;
 
+  // 🔥 LAST SPILLERE FØRST
+  await loadPlayers(match.id);
+
   pitchModalTitle.innerText = match.opponent || "";
   pitchModalDate.innerText = formatDateNorwegian(match.date, match.time);
   pitchModalVenue.innerText = match.venueName || "";
@@ -318,7 +430,7 @@ async function openPitchModal(match) {
 
   try {
     const snap = await getDoc(doc(db, "matches", match.id));
-    const data = snap.data(); // 🔥 DENNE MANGLER HOS DEG
+    const data = snap.data();
 
     currentLineup = data?.lineup || [];
     currentFormation = data?.formation || "4-3-3";
@@ -329,8 +441,9 @@ async function openPitchModal(match) {
     currentFormation = "4-3-3";
   }
 
-  updateFormationUI(); // 🔥 viktig
+  updateFormationUI();
 
+  // 🔥 RENDER ETTER ALT ER LASTET
   renderLineup();
   renderPlayerList();
 
@@ -349,17 +462,28 @@ function openInfoModal(match) {
 /* =========================
    RENDER PLAYER LIST
 ========================= */
-function createPlayerListItem(name) {
+function createPlayerListItem(player) {
   const el = document.createElement("div");
   el.className = "player-item";
-  el.innerText = name;
 
-  const onPitch = isPlayerOnPitch(name);
+el.innerHTML = `
+  <span class="player-name">${player.name}</span>
+  ${player.isLoan ? '<button class="remove-loan">✕</button>' : ''}
+`;
+
+  if (player.isLoan) {
+    el.querySelector(".remove-loan").onclick = (e) => {
+      e.stopPropagation();
+      removeLoanPlayer(activeMatchId, player.name);
+    };
+  }
+
+  const onPitch = isPlayerOnPitch(player);
   el.style.background = onPitch ? "#16a34a" : "#7f1d1d";
 
   const isSelected =
-    (selectedLineupPlayer && selectedLineupPlayer.name === name) ||
-    selectedPlayerName === name;
+    (selectedLineupPlayer && selectedLineupPlayer.name === player.name) ||
+    selectedPlayerName === player.name;
 
   if (isSelected) {
     el.style.outline = "3px solid #facc15";
@@ -369,13 +493,13 @@ function createPlayerListItem(name) {
   el.onclick = () => {
     if (isPlayerReadOnly()) return;
 
-    const existing = currentLineup.find((p) => p.name === name);
+    const existing = currentLineup.find(p => p.name === player.name);
 
     if (existing) {
       selectedLineupPlayer = existing;
       selectedPlayerName = null;
     } else {
-      selectedPlayerName = name;
+      selectedPlayerName = player.name;
       selectedLineupPlayer = null;
     }
 
@@ -404,8 +528,8 @@ function appendSection(titleText, names) {
 function renderPlayerList() {
   playerListDiv.innerHTML = "";
 
-  const onPitch = squad.filter((name) => isPlayerOnPitch(name));
-  const bench = squad.filter((name) => !isPlayerOnPitch(name));
+const onPitch = squad.filter(player => isPlayerOnPitch(player));
+const bench = squad.filter(player => !isPlayerOnPitch(player));
 
   appendSection("På banen", onPitch);
   appendSection("Benk", bench);
@@ -746,7 +870,7 @@ async function init() {
   setupModalHandlers();
   setupPitchInteractions();
   setupRemovePlayerButton();
-
+  setupLoanPlayerUI();
   await loadPlayers();
   await loadUserRole();
 
