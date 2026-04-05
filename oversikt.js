@@ -880,7 +880,7 @@ if (rows.length === 0) {
   return;
 }
 
-rows.forEach(m => {
+rows.forEach((m, index) => {
 	
       const div = document.createElement("div");
       div.className = "item";
@@ -908,15 +908,21 @@ div.innerHTML = `
     ${m.venueName ? " – " + m.venueName : ""}
   </div>
 
-  <div style="margin-top:8px;">
+  <div class="matchActions">
     <button class="startMatchBtn">Start kamp</button>
+
+    ${index === 0 ? `<span class="lineupBtn">Lagoppstilling</span>` : ``}
   </div>
 `;
 
-div.querySelector(".startMatchBtn").addEventListener("click", (e) => {
-  e.stopPropagation(); // viktig
-  window.location.href = `kamp.html?matchId=${m.id}`;
-});
+const lineupBtn = div.querySelector(".lineupBtn");
+
+if (lineupBtn) {
+  lineupBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    window.location.href = `kamper.html?matchId=${m.id}&openLineup=true`;
+  });
+}
 	  
       entriesEl.appendChild(div);
     });

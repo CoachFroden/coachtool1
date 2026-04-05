@@ -76,7 +76,6 @@ h2 { margin: 0 0 8px; font-size: 18px; }
 }
 
 .item button {
-  all: unset;
   cursor: pointer;
   width: 100%;
 }
@@ -750,4 +749,40 @@ h2 { margin: 0 0 8px; font-size: 18px; }
     font-size: 24px;
     margin: 14px 0 20px;
   }
+}
+
+.matchActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+/* 🔥 Start kamp = tydelig */
+.startMatchBtn {
+  all: unset;
+  color: #4ade80;        /* grønn tekst */
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0.85;
+  transition: 0.15s ease;
+}
+
+.startMatchBtn:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* 🔹 Lagoppstilling = subtil */
+.lineupBtn {
+  font-size: 0.85rem;
+  color: #60a5fa;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.lineupBtn:hover {
+  opacity: 1;
+  text-decoration: underline;
 }

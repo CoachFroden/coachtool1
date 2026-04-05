@@ -516,3 +516,18 @@ body {
   opacity: 1;
   transform: scale(1.2);
 }
+
+.modal-large {
+  max-width: 400px;
+  max-height: 90vh;
+  padding: 20px;
+  overflow-y: auto;
+
+  /* 🔥 skjul scrollbar */
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* IE/Edge */
+}
+
+.modal-large::-webkit-scrollbar {
+  display: none;              /* Chrome/Safari */
+}

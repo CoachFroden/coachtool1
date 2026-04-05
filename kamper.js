@@ -918,6 +918,30 @@ formationEl.onclick = () => {
   }
 };
 
+const params = new URLSearchParams(window.location.search);
+const matchId = params.get("matchId");
+const openLineup = params.get("openLineup");
+
+if (matchId && openLineup) {
+  const snap = await getDoc(doc(db, "matches", matchId));
+  if (snap.exists()) {
+    const data = snap.data();
+
+    openPitchModal({
+      id: matchId,
+      opponent: data.meta?.opponent,
+      date: data.meta?.date,
+      time: data.meta?.time,
+      venueName: data.meta?.venueName,
+      venueType: data.meta?.venueType
+    });
+  }
+}
+
 window.goBack = function () {
-  window.location.href = "fremside.html";
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    window.location.href = "fremside.html";
+  }
 };
