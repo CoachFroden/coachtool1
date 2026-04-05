@@ -915,6 +915,17 @@ div.innerHTML = `
   </div>
 `;
 
+// Start kamp
+const startBtn = div.querySelector(".startMatchBtn");
+
+if (startBtn) {
+  startBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    window.location.href = `kamp.html?matchId=${m.id}`;
+  });
+}
+
+// Lagoppstilling
 const lineupBtn = div.querySelector(".lineupBtn");
 
 if (lineupBtn) {
