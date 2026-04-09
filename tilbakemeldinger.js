@@ -1,3 +1,5 @@
+import { connectFunctionsEmulator } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-functions.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-functions.js";
 import { auth, db } from "./firebase-refleksjon.js";
 
 import {
@@ -17,8 +19,9 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-import { httpsCallable } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-functions.js";
 import { functions } from "./firebase-refleksjon.js";
+
+console.log("NY VERSJON LASTET");
 
 function generateAutoFeedback(r, data) {
 
@@ -378,7 +381,12 @@ const selectedReflectionId = reflectionId;
 if (type === "weekly") {
 
   const fn = httpsCallable(functions, "generatePlayerFeedback");
-  result = await fn({ playerId, entryId: reflectionId, type: "weekly" });
+
+  result = await fn({
+    playerId,
+    entryId: reflectionId,
+    type: "weekly"
+  });
 
 }
 

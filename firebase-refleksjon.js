@@ -25,3 +25,5 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app, "us-central1");
 
+console.log("FUNCTIONS REGION:", functions.region);
+
