@@ -9,40 +9,126 @@
 
 <body>
 
-  <main class="analyse-container">
+ <main class="analyse-container">
 
-    <header class="analyse-header">
-      <button id="backBtn" class="back-btn">←</button>
-      <div>
-        <h1>AI Analyse</h1>
-        <p>Utviklingsanalyse per spiller</p>
-      </div>
-    </header>
+<header class="analyse-header">
+  <button id="backBtn" class="back-btn">←</button>
+  <div>
+    <h1>AI Analyse</h1>
+    <p>Utviklingsanalyse per spiller</p>
+  </div>
+</header>
 
-    <section class="analyse-controls">
-      <div>
-        <label>Spiller</label>
-        <select id="analysisPlayerSelect">
-          <option value="">Velg spiller</option>
-        </select>
-      </div>
+<!-- ============================= -->
+<!-- KONTROLLER -->
+<!-- ============================= -->
 
-      <button id="runAnalysisBtn" class="primary-btn">
-        Kjør ny analyse
-      </button>
-    </section>
+<section class="analyse-controls">
 
-    <section class="analysis-stats" id="analysisStats">
-      <div class="stat-box">Ingen data valgt</div>
-    </section>
+  <div>
+    <label>Spiller</label>
+    <select id="analysisPlayerSelect">
+      <option value="">Velg spiller</option>
+    </select>
+  </div>
 
-    <section class="analysis-result" id="analysisResult">
-      Velg en spiller for å se analyse.
-    </section>
+  <div>
+    <label>Uke</label>
+    <select id="analysisWeekSelect">
+      <option value="all">Alle uker</option>
+    </select>
+  </div>
 
-  </main>
+  <button id="runAnalysisBtn" class="primary-btn">
+    Kjør ny analyse
+  </button>
 
-  <script type="module" src="analyse.js"></script>
+</section>
+
+<!-- ============================= -->
+<!-- ALERTS -->
+<!-- ============================= -->
+
+<section class="analysis-alerts card" id="analysisAlerts">
+
+<h2 id="alertTitle">Oppfølging</h2>
+
+<div id="alertList"></div>
+
+</section>
+
+<!-- ============================= -->
+<!-- GRAF -->
+<!-- ============================= -->
+
+<section class="card analysis-chart" id="developmentSection">
+
+<h2>Utvikling</h2>
+
+<canvas id="developmentChart"></canvas>
+
+</section>
+
+<!-- ============================= -->
+<!-- UKE SAMMENLIGNING -->
+<!-- ============================= -->
+
+<section id="weekComparison" class="card week-comparison" style="display:none;">
+
+<h2>Sammenligning spiller vs trener</h2>
+
+<div class="bar-row">
+<span>Innsats spiller</span>
+<div class="bar"><div id="playerEffortBar"></div></div>
+<span id="playerEffortValue"></span>
+</div>
+
+<div class="bar-row">
+<span>Innsats trener</span>
+<div class="bar"><div id="coachEffortBar"></div></div>
+<span id="coachEffortValue"></span>
+</div>
+
+<div class="bar-row">
+<span>Energi spiller</span>
+<div class="bar"><div id="playerEnergyBar"></div></div>
+<span id="playerEnergyValue"></span>
+</div>
+
+<div class="bar-row">
+<span>Energi trener</span>
+<div class="bar"><div id="coachEnergyBar"></div></div>
+<span id="coachEnergyValue"></span>
+</div>
+
+</section>
+
+<!-- ============================= -->
+<!-- STATS -->
+<!-- ============================= -->
+
+<section class="card">
+
+<h2>Nøkkeltall</h2>
+
+<div class="analysis-stats" id="analysisStats"></div>
+
+</section>
+
+<!-- ============================= -->
+<!-- AI RESULT -->
+<!-- ============================= -->
+
+<section class="analysis-result card" id="analysisResult">
+
+Velg en spiller for å se analyse.
+
+</section>
+
+</main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module" src="analyse.js"></script>
 
 </body>
 </html>

@@ -1,9 +1,6 @@
-import { auth, db } from "./firebase-refleksjon.js";
-
-import {
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-
+import { auth, db, functions } from "./firebase-refleksjon.js";
+import {onAuthStateChanged} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-functions.js";
 import {
   collection,
   getDocs,
@@ -11,9 +8,6 @@ import {
   doc,
   updateDoc
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-
-import { getFunctions, httpsCallable } 
-from "https://www.gstatic.com/firebasejs/12.6.0/firebase-functions.js";
 
 let developmentChart = null;
 
@@ -58,12 +52,19 @@ onAuthStateChanged(auth, async (user) => {
 ========================================= */
 
 async function initAnalyseUI() {
-	
-	if (uiInitialized) return;
-uiInitialized = true;
+
+  if (uiInitialized) return;
+  uiInitialized = true;
 
   const select = document.getElementById("analysisPlayerSelect");
   const weekSelect = document.getElementById("analysisWeekSelect");
+  const runBtn = document.getElementById("runAnalysisBtn");
+
+  if (!select || !weekSelect || !runBtn) {
+    console.warn("Analyse UI mangler elementer");
+    return;
+  }
+
   select.innerHTML = `<option value="">Velg spiller</option>`;
 
   const playersSnap = await getDocs(collection(db, "users"));
@@ -106,56 +107,45 @@ weekSelect.addEventListener("change", async () => {
 
 });
   
-  const runBtn = document.getElementById("runAnalysisBtn");
+if (runBtn) {
+  runBtn.addEventListener("click", async () => {
+    const playerId = select.value;
 
-runBtn.addEventListener("click", async () => {
-  const playerId = select.value;
+    if (!playerId) {
+      alert("Velg en spiller først.");
+      return;
+    }
 
-  if (!playerId) {
-    alert("Velg en spiller først.");
-    return;
-  }
+    runBtn.disabled = true;
+    runBtn.textContent = "Genererer...";
 
-  runBtn.disabled = true;
-  runBtn.textContent = "Genererer...";
+    try {
+      const generatePlayerAnalysis = httpsCallable(functions, "generatePlayerAnalysis");
 
-  try {
-  const functions = getFunctions();
-const generatePlayerAnalysis = httpsCallable(functions, "generatePlayerAnalysis");
+      const selectedWeek = document.getElementById("analysisWeekSelect").value;
 
-const selectedWeek = document.getElementById("analysisWeekSelect").value;
+      const alertsSection = document.getElementById("analysisAlerts");
 
-const alertsSection = document.getElementById("analysisAlerts");
+      if (alertsSection) {
+        alertsSection.style.display = "none";
+      }
 
-if (alertsSection) {
-  alertsSection.style.display = "none";
+      await generatePlayerAnalysis({
+        playerId,
+        week: selectedWeek
+      });
+
+      await loadPlayerAnalysis(playerId);
+
+    } catch (err) {
+      console.error(err);
+      alert("Noe gikk galt under analyse.");
+    }
+
+    runBtn.disabled = false;
+    runBtn.textContent = "Kjør ny analyse";
+  });
 }
-
-const alertTitle = document.querySelector("#alertTitle");
-
-if (alertTitle) {
-  if (selectedWeek === "all") {
-    alertTitle.style.display = "block";
-  } else {
-    alertTitle.style.display = "none";
-  }
-}
-
-await generatePlayerAnalysis({
-  playerId,
-  week: selectedWeek
-});
-
-    await loadPlayerAnalysis(playerId);
-
-  } catch (err) {
-    console.error(err);
-    alert("Noe gikk galt under analyse.");
-  }
-
-  runBtn.disabled = false;
-  runBtn.textContent = "Kjør ny analyse";
-});
 
 }
 
@@ -219,17 +209,6 @@ if (flags.length > 0) {
     loadPlayerAnalysis(player.uid);
 
   });
-	  
-	  div.addEventListener("click", () => {
-
-  const playerSelect = document.getElementById("analysisPlayerSelect");
-
-  playerSelect.value = player.uid;
-
-  populateWeekSelector(player.uid);
-  loadPlayerAnalysis(player.uid);
-
-});
 
       alertList.appendChild(div);
       alertCount++;
@@ -765,7 +744,10 @@ if (selectedEntry?.coachEnergy !== undefined) {
 
 const saveBtn = document.getElementById("saveCoachScoreBtn");
 
-saveBtn.addEventListener("click", async () => {
+saveBtn.replaceWith(saveBtn.cloneNode(true));
+const newSaveBtn = document.getElementById("saveCoachScoreBtn");
+
+newSaveBtn.addEventListener("click", async () => {
   const coachEffort = Number(document.getElementById("coachEffortInput").value);
   const coachEnergy = Number(document.getElementById("coachEnergyInput").value);
 
@@ -808,6 +790,7 @@ console.log("PLAYER ID:", playerId);
         Ingen AI-analyse generert enda.
       </div>
     `;
+	
     return;
   }
 
@@ -845,7 +828,6 @@ ${
     <p>${ai.coachingFocus || "-"}</p>
   </div>
 `;
-
 }
 
 /* =========================================
