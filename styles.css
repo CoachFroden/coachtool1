@@ -122,9 +122,9 @@ body {
 }
 
 #game-clock {
-  font-size: 44px;
+  font-size: 48px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
 }
 
 #scoreboard {
@@ -152,7 +152,7 @@ body {
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
 /* ======================================================
@@ -205,82 +205,6 @@ button:disabled {
   width: 100%;
 }
 
-/* Start */
-
-#startBtn {
-  background-image:
-    linear-gradient(#16a34a, #15803d),
-    linear-gradient(
-      135deg,
-      #e0f2fe,
-      #7dd3fc,
-      #38bdf8,
-      #7dd3fc,
-      #e0f2fe
-    );
-
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.2),
-    inset 0 -1px 0 rgba(0,0,0,0.5),
-    0 0 10px rgba(34,197,94,0.5);
-}
-
-/* Pause */
-
-#pauseBtn {
-  background-image:
-    linear-gradient(#dc2626, #991b1b),
-    linear-gradient(
-      135deg,
-      #fee2e2,
-      #fca5a5,
-      #ef4444,
-      #fca5a5,
-      #fee2e2
-    );
-
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.15),
-    inset 0 -1px 0 rgba(0,0,0,0.6),
-    0 0 10px rgba(239,68,68,0.5);
-}
-
-#resumeBtn {
-  background-image:
-    linear-gradient(#16a34a, #15803d),
-    linear-gradient(
-      135deg,
-      #e0f2fe,
-      #7dd3fc,
-      #38bdf8,
-      #7dd3fc,
-      #e0f2fe
-    );
-
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.2),
-    inset 0 -1px 0 rgba(0,0,0,0.5),
-    0 0 6px rgba(34,197,94,0.35);
-}
-
-#endBtn {
-  background-image:
-    linear-gradient(#dc2626, #991b1b),
-    linear-gradient(
-      135deg,
-      #fee2e2,
-      #fca5a5,
-      #ef4444,
-      #fca5a5,
-      #fee2e2
-    );
-
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.15),
-    inset 0 -1px 0 rgba(0,0,0,0.6),
-    0 0 6px rgba(239,68,68,0.35);
-}
-
 /* ======================================================
    EVENTS / GOALS
    ====================================================== */
@@ -292,10 +216,17 @@ button:disabled {
 }
 
 .team-events {
-  background: transparent;
-  padding: 0.4rem 0;
-  border: 1px;
-  flex:1;
+  background: #0f172a;
+  border-radius: 14px;
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.goalBtn {
+  background: #2563eb;
+  font-size: 1.1rem;
+  padding: 1rem;
+  border-radius: 10px;
 }
 
 .team-events h3 {
@@ -305,10 +236,6 @@ button:disabled {
   align: center;
 }
 
-.goalBtn {
-  background: #2563eb;
-  border: none;
-}
 .goalBtn:hover {
   background: #1d4ed8;
 }
@@ -348,13 +275,6 @@ button:disabled {
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
 }
-
-#lineupBtn,
-#subBtn,
-#cardBtn {
-  background: #1e293b;
-}
-
 
 /* ======================================================
    MODALS (klar for senere JS)
@@ -479,8 +399,9 @@ button:disabled {
 }
 
 .secondary-btn {
-  margin-top: 12px;
+  margin: 0;
 }
+
 .playing-time-wrapper {
   display: flex;
   flex-direction: column;
@@ -494,7 +415,7 @@ button:disabled {
 
 .playing-time {
   width: 100%;
-  max-width: 320px; /* matcher kort-bredden i UI */
+  max-width: none; /* matcher kort-bredden i UI */
   margin-top: 8px;
 }
 /* ===============================
@@ -791,11 +712,8 @@ button {
 }
 
 section {
-  margin: 0.75rem 1rem;
-  padding: 0.9rem;
-  border-radius: 14px;
   background: #0f172a;
-  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 14px;
 }
 
 /* ======================================================
@@ -1675,4 +1593,169 @@ input[type="number"]::-webkit-outer-spin-button {
 /* Firefox */
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+button {
+  border-radius: 12px;
+  font-weight: 600;
+  padding: 0.9rem;
+  font-size: 0.95rem;
+
+  background: #1e293b;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #f1f5f9;
+
+  transition: all 0.15s ease;
+}
+
+button:hover {
+  background: #334155;
+}
+
+/* PRIMARY */
+#startBtn {
+  background: #16a34a;
+  border: none;
+}
+
+/* DANGER */
+#pauseBtn,
+#endBtn {
+  background: #dc2626;
+  border: none;
+}
+
+/* SECONDARY */
+#resumeBtn {
+  background: #2563eb;
+  border: none;
+}
+
+.goal-section {
+  margin-bottom: 1rem;
+}
+
+/* Tittel */
+.goal-title {
+  text-align: center;
+  font-size: 1rem;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin-bottom: 0.6rem;
+}
+
+/* To kolonner */
+.goal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+/* Hver side */
+.goal-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Hjemme/Borte tekst */
+.goal-label {
+  font-size: 0.95rem;
+  opacity: 0.6;
+  margin-bottom: 0.4rem;
+}
+
+/* Knapp */
+.goalBtn {
+  width: 100%;
+  padding: 0.9rem 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+section {
+  margin: 1rem;
+}
+
+#action-card {
+  padding: 1rem;
+}
+
+#togglePlayingTimeBtn {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 12px;
+}
+
+#action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem; /* 🔥 dette styrer ALLE avstander */
+}
+
+#action-card button {
+  margin: 3px;
+}
+
+.hidden-controls {
+  display: none !important;
+}
+
+#controls {
+  transition: all 0.25s ease;
+}
+
+.hidden-controls {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+  transition: all 0.25s ease;
+}
+
+#action-card button {
+  padding: 0.65rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+#togglePlayingTimeBtn {
+  background: linear-gradient(180deg, #1e3a8a, #1d4ed8);
+  box-shadow: 0 0 8px rgba(37,99,235,0.35);
+}
+
+#cardBtn {
+  background: linear-gradient(90deg, #eab308 0%, #f97316 50%, #dc2626 100%);
+  box-shadow: 0 0 10px rgba(234,179,8,0.25);
+}
+
+#toggleEventsBtn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+#subBtn {
+  background: linear-gradient(180deg, #166534, #16a34a);
+  box-shadow: 0 0 8px rgba(34,197,94,0.35);
+}
+
+.card-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.card-icon {
+  font-size: 1.1rem;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-icon {
+  font-size: 1.05rem;
+  opacity: 0.85;
 }

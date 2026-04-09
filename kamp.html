@@ -124,43 +124,49 @@
     <button id="adjustStartBtn">Juster starttid</button>
   </section>
 
-  <!-- SPILLETID -->
-  <div class="playing-time-wrapper">
+
+  
+  <section id="action-card">
+
+  <!-- MÅL -->
+<div class="goal-section">
+
+  <div class="goal-title">MÅL</div>
+
+  <div class="goal-row">
+
+    <div class="goal-col">
+      <button class="goalBtn" data-team="home">Samnanger</button>
+    </div>
+
+    <div class="goal-col">
+      <button class="goalBtn" data-team="away">Motstander</button>
+    </div>
+
+  </div>
+
+</div>
+
+  <!-- BYTTE + KORT -->
+  <div class="action-row">
+    <button id="subBtn">Bytte</button>
+    <button id="cardBtn">Kort</button>
+  </div>
+  
+    <!-- SPILLETID -->
     <button id="togglePlayingTimeBtn" class="secondary-btn">
       Vis spilletid
     </button>
-
     <div id="playingTimePanel" class="playing-time hidden">
       <ul id="playingTimeList"></ul>
     </div>
-  </div>
 
-  <!-- MÅL -->
-  <section id="events">
-
-    <div class="team-events">
-      <h3 id="homeTeamLabel">Hjemmelag</h3>
-      <button class="goalBtn" data-team="home">Mål</button>
-    </div>
-
-    <div class="team-events">
-      <h3 id="awayTeamLabel">Bortelag</h3>
-      <button class="goalBtn" data-team="away">Mål</button>
-    </div>
-
-  </section>
-
-  <!-- BYTTE + KORT -->
-<section id="extra-events">
-  <button id="subBtn">Bytte</button>
-  <button id="cardBtn">Kort</button>
-</section>
-
-<div class="full-width-wrapper">
+  <!-- HENDELSER -->
   <button id="toggleEventsBtn" class="secondary-btn full-width">
     Vis hendelser
   </button>
-</div>
+
+</section>
 
 </div>
 

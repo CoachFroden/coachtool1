@@ -34,6 +34,8 @@ const auth = getAuth();
 
 const db = getFirestore();
 
+let matchStarted = false;
+
 function getMatchIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
   return params.get("matchId");
@@ -204,8 +206,7 @@ const matchUI = document.getElementById("matchUI");
 const eventLog = document.getElementById("event-log");
 const teams = document.querySelector(".teams");
   const clockSection = document.getElementById("clock-section");
-    const events = document.getElementById("events");
-  const extraEvents = document.getElementById("extra-events");  
+const actionCard = document.getElementById("action-card"); 
   
   const loanBtn = document.getElementById("loanPlayersBtn");
 const loanModal = document.getElementById("loanModal");
@@ -536,8 +537,7 @@ function updateUIByStatus() {
 
     clockSection.style.display = "block";
     matchControls.style.display = "block";
-    events.style.display = "block";
-    extraEvents.style.display = "block";
+actionCard.style.display = "block";
     eventLog.style.display = "block";
   }
 }
@@ -2413,6 +2413,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 });
+
+const controls = document.getElementById("controls");
+
+let controlsVisible = true;
+
+clockSection.addEventListener("click", () => {
+  // kun når kampen faktisk er live
+  if (matchState.status !== "LIVE") return;
+
+  controlsVisible = !controlsVisible;
+
+  controls.classList.toggle("hidden-controls", !controlsVisible);
+});
+
 document.getElementById("backBtn")?.addEventListener("click", () => {
 
   // 🔥 fjern aktiv kamp fra localStorage
