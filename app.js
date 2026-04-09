@@ -791,63 +791,51 @@ function handleRedCard(playerId, timeMs) {
    ====================================================== */
    
 startBtn.addEventListener("click", async () => {
-	
-	const liveMatch = await findLiveMatch();
 
-if (liveMatch) {
-  alert("Det pågår allerede en kamp.");
-  return;
-}
+  const liveMatch = await findLiveMatch();
+  if (liveMatch) {
+    alert("Det pågår allerede en kamp.");
+    return;
+  }
 
   if (!auth.currentUser) {
     alert("Du må være logget inn");
     return;
   }
 
-  document.getElementById("preMatchMeta")
-    .classList.add("hidden-meta");
+  const urlMatchId = getMatchIdFromUrl();
 
-  // 🔥 LEGG DENNE HER
-  clockSection.style.display = "block";
+  if (!urlMatchId) {
+    alert("Feil: mangler matchId");
+    return;
+  }
+
+  matchState.matchId = urlMatchId;
 
   readMatchMetaFromUI();
 
-  if (!matchState.meta.ourTeam || !matchState.meta.opponent) {
-    alert("Legg inn begge lagnavn før start.");
-    return;
-  }
-  
-  if (!matchState.meta.date || !matchState.meta.startTime) {
-  alert("Du må sette dato og starttid før kampen starter.");
-  return;
-}
+  matchState.status = "LIVE";
+  matchState.period = 1;
+  matchState.timer.startTimestamp = Date.now();
+  matchState.timer.elapsedMs = 0;
 
+  await setDoc(doc(db, "matches", matchState.matchId), {
+    status: "LIVE",
+    startedAt: serverTimestamp(),
+    timer: {
+      elapsedMs: 0,
+      startTimestamp: Date.now()
+    },
+    updatedAt: serverTimestamp()
+  }, { merge: true });
 
-matchState.matchId = crypto.randomUUID();
-matchState.createdAt = new Date().toISOString();
-localStorage.setItem("activeMatchId", matchState.matchId);
+  addEvent("Kamp startet");
 
-matchState.status = "LIVE";
-matchState.period = 1;
-matchState.timer.startTimestamp = Date.now();
-matchState.startedAt = new Date().toISOString();
-matchState.timer.elapsedMs = 0;
+  startPlayingTime();
+  startClock();
 
-
-
-// 🔥 så lagrer du
-await saveNewMatch();
-addEvent("Kamp startet");
-await saveLiveUpdate();
-
-lockMatchMetaInputs();
-periodIndicator.textContent = "1. omgang";
-
-startPlayingTime();
-startClock();
-
-updateControls();
-updateUIByStatus();
+  updateControls();
+  updateUIByStatus();
 
 setTimeout(() => {
   updatePlayingTimeUI();
