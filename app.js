@@ -48,11 +48,6 @@ if (!user || !matchState.userRole || !matchState.matchId) {
   return null;
 }
 
-if (!matchState.matchId) {
-  console.warn("matchId mangler – hopper over lagring");
-  return null;
-}
-
   if (matchState.userRole === "coach") {
     return doc(db, "matches", matchState.matchId);
   }
@@ -174,6 +169,8 @@ const awayTeamInput = document.getElementById("awayTeam");
 const dateInput = document.getElementById("matchDate");
 const timeInput = document.getElementById("matchTime");
 const halfLengthInput = document.getElementById("halfLength");
+const matchTypeInput = document.getElementById("matchType");
+
 
 const startBtn = document.getElementById("startBtn");
 const pauseBtn = document.getElementById("pauseBtn");
@@ -1331,14 +1328,20 @@ const venueToggleBtn =
   document.getElementById("venueToggleBtn");
 
 function updateVenueToggle() {
-  if (matchState.meta.venue === "home") {
-    venueToggleBtn.textContent = "Hjemmekamp";
-    venueToggleBtn.classList.remove("away");
-    venueToggleBtn.classList.add("home");
+  const btn = document.getElementById("venueToggleBtn");
+
+  if (!btn) return;
+
+  const venue = matchState.meta.venue;
+
+  if (venue === "away") {
+    btn.textContent = "Bortekamp";
+    btn.classList.remove("home");
+    btn.classList.add("away");
   } else {
-    venueToggleBtn.textContent = "Bortekamp";
-    venueToggleBtn.classList.remove("home");
-    venueToggleBtn.classList.add("away");
+    btn.textContent = "Hjemmekamp";
+    btn.classList.remove("away");
+    btn.classList.add("home");
   }
 }
 
@@ -1689,20 +1692,19 @@ document.getElementById("saveSquadBtn").addEventListener("click", () => {
 
   matchState.players.home = newPlayers;
   matchState.squad.onField.home = newOnField;
-
+  
   matchState.lineupConfirmed = true;
+document.getElementById("squadModal").classList.add("hidden");
+updateControls();
+updatePlayingTimeUI();
 
-  document.getElementById("matchUI").classList.remove("hidden");
-  updateControls();
-  document.getElementById("squadModal").classList.add("hidden");
-  updatePlayingTimeUI();
 });
 
-matchState.lineupConfirmed = true;
-document.getElementById("matchUI").classList.remove("hidden");
-updateControls();
-document.getElementById("squadModal").classList.add("hidden");
-updatePlayingTimeUI();
+// matchState.lineupConfirmed = true;
+// document.getElementById("matchUI").classList.remove("hidden");
+// updateControls();
+// document.getElementById("squadModal").classList.add("hidden");
+// updatePlayingTimeUI();
 
 document.getElementById("cancelSquadBtn")
   .addEventListener("click", () =>
@@ -1896,6 +1898,7 @@ const meta = {
 
 const matchData = {
   meta,
+  type: matchState.meta.type, 
   status: "LIVE",
   score: {
     our: 0,
@@ -2141,59 +2144,53 @@ async function loadActiveMatch() {
   const user = auth.currentUser;
   if (!user) return;
 
-let matchRef;
-let snap;
+  let matchRef;
+  let snap;
 
-if (matchState.userRole === "assistantCoach") {
+  if (matchState.userRole === "assistantCoach") {
+    matchRef = doc(db, "assistantMatches", user.uid, "matches", matchId);
+    snap = await getDoc(matchRef);
 
-  // prøv assistant sin egen først
-  matchRef = doc(
-    db,
-    "assistantMatches",
-    user.uid,
-    "matches",
-    matchId
-  );
-
-  snap = await getDoc(matchRef);
-
-  // fallback → coach sin kamp
-  if (!snap.exists()) {
+    if (!snap.exists()) {
+      matchRef = doc(db, "matches", matchId);
+      snap = await getDoc(matchRef);
+    }
+  } else {
     matchRef = doc(db, "matches", matchId);
     snap = await getDoc(matchRef);
   }
 
-} else {
-  // coach
-  matchRef = doc(db, "matches", matchId);
-  snap = await getDoc(matchRef);
-}
-
-if (!snap.exists()) {
-  console.log("❌ Fant ikke kamp i Firestore");
-
-  // 🔥 RESET ALT
-  localStorage.removeItem("activeMatchId");
-
-  // 👉 send bruker tilbake til start
-  window.location.href = "kamp.html";
-
-  return;
-}
-
-console.log("✅ Fant kamp:", snap.data());
-
-snap = await getDoc(matchRef);
-  if (!snap.exists()) return;
+  if (!snap.exists()) {
+    localStorage.removeItem("activeMatchId");
+    window.location.href = "kamp.html";
+    return;
+  }
 
   const data = snap.data();
 
-  // ❗ Hvis ferdig → nullstill
   if (data.status === "ENDED") {
     localStorage.removeItem("activeMatchId");
     return;
   }
 
+  matchState.matchId = matchId;
+  matchState.meta = {
+    ourTeam: "",
+    opponent: "",
+    date: "",
+    startTime: "",
+    halfLengthMin: 35,
+    venue: "home",
+    type: "league",
+    ...data.meta
+  };
+
+  matchState.meta.venue =
+    data.meta?.venue ||
+    data.meta?.venueType ||
+    "home";
+
+  console.log("✅ Fant kamp:", data);
   console.log("Gjenoppretter kamp:", matchId);
 
   /* =========================
@@ -2202,6 +2199,14 @@ snap = await getDoc(matchRef);
 
   matchState.matchId = matchId;
   matchState.meta = data.meta || {};
+
+// 🔥 FIX: støtt begge navn
+matchState.meta.venue =
+  data.meta?.venue ||
+  data.meta?.venueType ||
+  "home";
+  
+updateVenueToggle();
 
 homeTeamInput.value =
   matchState.meta?.ourTeam?.trim() || "Samnanger";
@@ -2212,6 +2217,9 @@ awayTeamInput.value =
   dateInput.value = matchState.meta.date || "";
   timeInput.value = matchState.meta.startTime || matchState.meta.time || "";
   halfLengthInput.value = matchState.meta.halfLengthMin || 35;
+  matchTypeInput.value = matchState.meta.type || "league";
+  
+  console.log("VENUE FRA FIRESTORE:", matchState.meta.venue);
 
   updateVenueToggle();
 
