@@ -1,5 +1,6 @@
 import { initializeApp } from
   "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
 import {
   getFirestore,
   collection,
@@ -9,7 +10,8 @@ import {
   setDoc,
   serverTimestamp,
   query,
-  where
+  where,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 
@@ -2504,6 +2506,53 @@ if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
 setTimeout(() => {
   updatePlayingTimeUI();
 }, 0);
+
+setTimeout(() => {
+  updatePlayingTimeUI();
+}, 0);
+
+// 🔥 LEGG INN HER
+const coachRef = doc(db, "matches", matchState.matchId);
+
+onSnapshot(coachRef, (snap) => {
+  console.log("SNAPSHOT TRIGGERED");
+
+  if (!snap.exists()) return;
+
+  const data = snap.data();
+
+  if (!data.lineup) return;
+
+  const newOnField = [];
+
+  data.lineup.forEach(p => {
+    const firstName = p.name.split(" ")[0];
+    const squadPlayer = HOME_SQUAD.find(s => s.name === firstName);
+    if (!squadPlayer) return;
+
+    newOnField.push(squadPlayer.id);
+  });
+
+// nullstill alle
+Object.values(matchState.players.home).forEach(p => {
+  p.starter = false;
+});
+
+// sett nye startere fra lineup
+data.lineup.forEach(p => {
+  const firstName = p.name.split(" ")[0];
+  const squadPlayer = HOME_SQUAD.find(s => s.name === firstName);
+  if (!squadPlayer) return;
+
+  if (matchState.players.home[squadPlayer.id]) {
+    matchState.players.home[squadPlayer.id].starter = true;
+  }
+});
+
+// 🔥 oppdater UI
+updatePlayingTimeUI();
+openSquadModal(); // ← denne er viktig for checkboxene
+});
 }
 
 document.addEventListener("DOMContentLoaded", () => {
