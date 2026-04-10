@@ -1467,7 +1467,7 @@ function createPlayer({ id, name }) {
   return {
     id,
     name,
-    present: false,
+    present: true,
     starter: false,
     intervals: [],
     cards: []
