@@ -54,6 +54,7 @@ async function safeSetDoc(ref, data, options = {}) {
 }
 
 let matchStarted = false;
+let isSquadModalOpen = false;
 
 function getMatchIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -1475,6 +1476,7 @@ function createPlayer({ id, name }) {
 }
 
 function openSquadModal() {
+	 isSquadModalOpen = true;
 	const squadLocked = !["NOT_STARTED", "UPCOMING"].includes(matchState.status);
   const list = document.getElementById("squadList");
   list.innerHTML = "";
@@ -1787,6 +1789,7 @@ document.getElementById("saveSquadBtn").addEventListener("click", () => {
   matchState.squad.onField.home = newOnField;
   
   matchState.lineupConfirmed = true;
+  isSquadModalOpen = false;
 document.getElementById("squadModal").classList.add("hidden");
 updateControls();
 updatePlayingTimeUI();
@@ -1800,9 +1803,10 @@ updatePlayingTimeUI();
 // updatePlayingTimeUI();
 
 document.getElementById("cancelSquadBtn")
-  .addEventListener("click", () =>
-    document.getElementById("squadModal").classList.add("hidden")
-  );
+  .addEventListener("click", () => {
+    isSquadModalOpen = false; // 👈 legg til
+    document.getElementById("squadModal").classList.add("hidden");
+  });
 
 document.getElementById("cancelSubBtn").addEventListener("click", closeSubModal);
 
@@ -2551,7 +2555,9 @@ data.lineup.forEach(p => {
 
 // 🔥 oppdater UI
 updatePlayingTimeUI();
-openSquadModal(); // ← denne er viktig for checkboxene
+if (isSquadModalOpen) {
+  openSquadModal();
+}
 });
 }
 
