@@ -34,6 +34,23 @@ const auth = getAuth();
 
 const db = getFirestore();
 
+async function safeSetDoc(ref, data, options = {}) {
+  try {
+    if (!ref) {
+      console.warn("❌ Mangler docRef – lagring hoppet over");
+      return false;
+    }
+
+    await setDoc(ref, data, options);
+    return true;
+
+  } catch (error) {
+    console.error("🔥 Firestore setDoc feil:", error);
+    alert("Noe gikk galt ved lagring. Prøv igjen.");
+    return false;
+  }
+}
+
 let matchStarted = false;
 
 function getMatchIdFromUrl() {
@@ -44,11 +61,17 @@ function getMatchIdFromUrl() {
 function getMatchRef() {
   const user = auth.currentUser;
 
-  // 🔴 STOPP hvis auth ikke er klar
-if (!user || !matchState.userRole || !matchState.matchId) {
-  console.warn("MatchRef ikke klar enda");
-  return null;
-}
+  if (!user) {
+    throw new Error("❌ getMatchRef: user mangler");
+  }
+
+  if (!matchState.userRole) {
+    throw new Error("❌ getMatchRef: userRole mangler");
+  }
+
+  if (!matchState.matchId) {
+    throw new Error("❌ getMatchRef: matchId mangler");
+  }
 
   if (matchState.userRole === "coach") {
     return doc(db, "matches", matchState.matchId);
@@ -224,7 +247,7 @@ cancelLoanBtn.addEventListener("click", () => {
   loanModal.classList.add("hidden");
 });
 
-loanCountInput.addEventListener("input", () => {
+loanCountInput.addEventListener("change", () => {
   const count = Number(loanCountInput.value) || 0;
 
   loanNamesContainer.innerHTML = "";
@@ -248,12 +271,7 @@ confirmLoanBtn.addEventListener("click", () => {
 
     const id = "loan_" + Date.now() + "_" + index;
 
-    matchState.players.home[id] = {
-      id,
-      name,
-      intervals: [],
-      cards: []
-    };
+matchState.players.home[id] = createPlayer({ id, name });
 
     // legg til i squad (ikke automatisk på banen)
   });
@@ -380,7 +398,7 @@ function registerGoal(team, timeMs, scorerData) {
   const minuteText = formatMatchMinute(timeMs);
 
 if (team === "home") {
-  matchState.score.our += 1;
+  addOurGoal();
 
   const player = matchState.players.home[scorerData.id];
   if (!player) return;
@@ -397,7 +415,7 @@ addEvent({
 }
 
   if (team === "away") {
-    matchState.score.their += 1;
+    addTheirGoal();
 
     const label = scorerData.text
       ? scorerData.text
@@ -525,8 +543,8 @@ function updateUIByStatus() {
 
     clockSection.style.display = "none";
     matchControls.style.display = "none";
-    events.style.display = "none";
-    extraEvents.style.display = "none";
+   // events.style.display = "none";
+   // extraEvents.style.display = "none";
     eventLog.style.display = "none";
   }
 
@@ -784,6 +802,82 @@ function handleRedCard(playerId, timeMs) {
 }
 
 /* ======================================================
+   STATE ACTIONS (kontrollerte endringer)
+   ====================================================== */
+let saveTimeout = null;
+
+function commitState() {
+  if (!isReadyForFirestore()) return;
+
+  // avbryt tidligere planlagt save
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+  }
+
+  // lagre etter 1 sekund
+  saveTimeout = setTimeout(() => {
+    saveLiveUpdate();
+    saveTimeout = null;
+  }, 1000);
+}
+
+function startTimerNow() {
+  matchState.timer.startTimestamp = Date.now();
+  commitState();
+}
+
+function pauseTimerNow() {
+  if (!matchState.timer.startTimestamp) return;
+
+  const now = Date.now();
+  matchState.timer.elapsedMs += now - matchState.timer.startTimestamp;
+  matchState.timer.startTimestamp = null;
+
+  commitState();
+}
+
+function getLiveElapsedMs() {
+  if (matchState.status !== "LIVE") {
+    return matchState.timer.elapsedMs;
+  }
+
+  return (
+    matchState.timer.elapsedMs +
+    (Date.now() - matchState.timer.startTimestamp)
+  );
+}
+
+function setMatchStatus(status) {
+  matchState.status = status;
+  commitState();
+}
+
+function setPeriod(period) {
+  matchState.period = period;
+  commitState();
+}
+
+function addOurGoal() {
+  matchState.score.our += 1;
+  commitState();
+}
+
+function addTheirGoal() {
+  matchState.score.their += 1;
+  commitState();
+}
+
+function setTimerStart(timestamp) {
+  matchState.timer.startTimestamp = timestamp;
+  commitState();
+}
+
+function addElapsedTime(ms) {
+  matchState.timer.elapsedMs += ms;
+  commitState();
+}
+
+/* ======================================================
    BUTTON HANDLERS
    ====================================================== */
    
@@ -811,12 +905,12 @@ startBtn.addEventListener("click", async () => {
 
   readMatchMetaFromUI();
 
-  matchState.status = "LIVE";
+  setMatchStatus("LIVE");
   matchState.period = 1;
   matchState.timer.startTimestamp = Date.now();
   matchState.timer.elapsedMs = 0;
 
-  await setDoc(doc(db, "matches", matchState.matchId), {
+  await safeSetDoc(doc(db, "matches", matchState.matchId), {
     status: "LIVE",
     startedAt: serverTimestamp(),
     timer: {
@@ -875,11 +969,8 @@ pauseBtn.addEventListener("click", () => {
 
   const now = Date.now();
 
-  matchState.timer.elapsedMs +=
-    now - matchState.timer.startTimestamp;
-
-  matchState.timer.startTimestamp = null;
-  matchState.status = "PAUSED";
+pauseTimerNow();
+setMatchStatus("PAUSED");
 
   pausePlayingTime(matchState.timer.elapsedMs);
 
@@ -944,7 +1035,7 @@ resumeBtn.addEventListener("click", () => {
   matchState.timer.elapsedMs = getHalfLengthMs(); // ← VIKTIG
 
   matchState.status = "LIVE";
-  matchState.timer.startTimestamp = Date.now();
+  startTimerNow();
 
   periodIndicator.textContent = "2. omgang";
 
@@ -1047,7 +1138,7 @@ if (minute > matchState.meta.halfLengthMin) {
 }
 
   } else {
-    timeMs = getCurrentMatchTimeMs();
+    timeMs = getLiveElapsedMs();
   }
 
   let scorerData = null;
@@ -1370,33 +1461,33 @@ function setLoginMessage(text, type = "") {
 
 document.getElementById("squadBtn").addEventListener("click", openSquadModal);
 
+function createPlayer({ id, name }) {
+  return {
+    id,
+    name,
+    present: false,
+    starter: false,
+    intervals: [],
+    cards: []
+  };
+}
+
 function openSquadModal() {
 	const squadLocked = !["NOT_STARTED", "UPCOMING"].includes(matchState.status);
   const list = document.getElementById("squadList");
   list.innerHTML = "";
   
   // 🔥 INIT DEFAULT STATE (VIKTIG)
-HOME_SQUAD.forEach(p => {
-
-  // hvis spiller ikke finnes → lag ny
-  if (!matchState.players.home[p.id]) {
-    matchState.players.home[p.id] = {
-      id: p.id,
-      name: p.name,
-      present: true,
-      starter: true,
-      intervals: [],
-      cards: []
-    };
-  }
-
-  // 🔥 VIKTIG: hvis kampen IKKE er startet → reset starter
-  if (["NOT_STARTED", "UPCOMING"].includes(matchState.status)) {
-    matchState.players.home[p.id].present = true;
-    matchState.players.home[p.id].starter = true;
-  }
-
+if (!matchState.lineupConfirmed) {
+  HOME_SQUAD.forEach(p => {
+    if (!matchState.players.home[p.id]) {
+matchState.players.home[p.id] = createPlayer({
+  id: p.id,
+  name: p.name
 });
+    }
+  });
+}
   
   const saveBtn = document.getElementById("saveSquadBtn");
 
@@ -1421,7 +1512,7 @@ if (squadLocked) {
 const presentCheckbox = document.createElement("input");
 presentCheckbox.type = "checkbox";
 presentCheckbox.checked =
-  matchState.players.home[player.id]?.present ?? true;
+  matchState.players.home[player.id]?.present ?? false;
 	presentCheckbox.disabled = squadLocked;
 
   const presentText = document.createElement("span");
@@ -1438,7 +1529,7 @@ starterCheckbox.type = "checkbox";
 const existing = matchState.players.home[player.id];
 
 starterCheckbox.checked =
-  existing ? existing.starter : true;
+  existing ? existing.starter : false;
   starterCheckbox.disabled = squadLocked || !presentCheckbox.checked;
 
   const starterText = document.createElement("span");
@@ -1742,7 +1833,7 @@ function updateStarterCounter() {
   counter.textContent = `Startere: ${count} / ${MAX_STARTERS}`;
 
   // kun lov å lagre når EXACT 11
-  saveBtn.disabled = false;
+  saveBtn.disabled = count !== MAX_STARTERS;
 }
 
 function getMatchSummary() {
@@ -1977,8 +2068,14 @@ async function saveLiveUpdate() {
   const user = auth.currentUser;
   if (!user) return;
 
-  const matchRef = getMatchRef();
-  if (!matchRef) return;
+let matchRef;
+
+try {
+  matchRef = getMatchRef();
+} catch (e) {
+  console.warn(e.message);
+  return;
+}
 
   const data = {
     score: matchState.score,
@@ -2234,9 +2331,16 @@ awayTeamInput.value =
      PLAYERS (KJERNE)
   ========================= */
 
-  matchState.players.home = data.players || {};
-  // 🔥 FULL fallback hvis ingenting finnes (kritisk)
-if (!data.players && (!data.squad || !data.squad.present?.length)) {
+if (data.players) {
+  // 🔥 Kamp er startet → bruk ekte state
+  matchState.players.home = data.players;
+
+} else if (data.lineup && data.lineup.length > 0) {
+  // 🔥 Før kamp → bygg fra lineup
+  matchState.players.home = {};
+  matchState.squad.onField.home = [];
+
+  // lag hele troppen først
   HOME_SQUAD.forEach(p => {
     matchState.players.home[p.id] = {
       id: p.id,
@@ -2247,14 +2351,29 @@ if (!data.players && (!data.squad || !data.squad.present?.length)) {
       cards: []
     };
   });
+
+  // sett de som er valgt i lineup
+  data.lineup.forEach((p) => {
+    const firstName = p.name.split(" ")[0];
+    const squadPlayer = HOME_SQUAD.find(s => s.name === firstName);
+    if (!squadPlayer) return;
+
+    matchState.players.home[squadPlayer.id].present = true;
+    matchState.players.home[squadPlayer.id].starter = true;
+
+    matchState.squad.onField.home.push(squadPlayer.id);
+  });
+
+  matchState.lineupConfirmed = true;
 }
-  matchState.squad.onField.home = [];
 
   // 🔥 sørg for struktur
-  Object.values(matchState.players.home).forEach(p => {
-    if (!p.intervals) p.intervals = [];
-    if (!p.cards) p.cards = [];
-  });
+Object.values(matchState.players.home).forEach(p => {
+  if (!p.intervals) p.intervals = [];
+  if (!p.cards) p.cards = [];
+  if (p.present === undefined) p.present = false;
+  if (p.starter === undefined) p.starter = false;
+});
 
   // 🔥 fallback hvis players mangler noen
   (data.squad?.present || []).forEach(p => {
@@ -2304,8 +2423,8 @@ matchState.squad.onField.home.forEach(id => {
   }
 });
 
-  matchState.lineupConfirmed =
-  Object.keys(matchState.players.home || {}).length > 0;
+matchState.lineupConfirmed =
+  matchState.squad.onField.home.length > 0;
   updateControls();
 
   /* =========================
@@ -2377,7 +2496,6 @@ updateControls();
 updateUIByStatus();
 teams.style.display = "flex";
 populateGoalScorers("home");
-matchState.lineupConfirmed = true;
 
 if (matchState.status === "LIVE" || matchState.status === "PAUSED") {
   document.getElementById("matchUI")?.classList.remove("hidden");
