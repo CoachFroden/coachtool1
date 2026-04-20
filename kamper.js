@@ -279,8 +279,10 @@ playersSnap.forEach((docSnap) => {
   const data = docSnap.data();
   if (data.navn) {
     squad.push({
+		  id: docSnap.id,
       name: data.navn,
-      isLoan: false
+      isLoan: false,
+      present: true // 🔥 default
     });
   }
 });
@@ -304,10 +306,23 @@ async function saveLineup() {
   if (!canEditLineup()) return;
 
   try {
-    await updateDoc(doc(db, "matches", activeMatchId), {
-      lineup: currentLineup
+    // 🔥 bygg players-objekt
+    const playersData = {};
+
+    squad.forEach(player => {
+      const id = player.id;  // evt bruk ekte id hvis du har
+      playersData[id] = {
+        name: player.name,
+        present: player.present !== false
+      };
     });
-    console.log("Lineup lagret");
+
+    await updateDoc(doc(db, "matches", activeMatchId), {
+      lineup: currentLineup,
+      players: playersData // 🔥 NY
+    });
+
+    console.log("Lineup + players lagret");
   } catch (err) {
     console.error("Feil ved lagring:", err);
   }
@@ -428,14 +443,27 @@ async function openPitchModal(match) {
   pitchModalType.innerText =
     match.venueType === "away" ? "Borte" : "Hjemme";
 
-  try {
-    const snap = await getDoc(doc(db, "matches", match.id));
-    const data = snap.data();
+try {
+  const snap = await getDoc(doc(db, "matches", match.id));
+  const data = snap.data();
 
-    currentLineup = data?.lineup || [];
-    currentFormation = data?.formation || "4-3-3";
+  currentLineup = data?.lineup || [];
+  currentFormation = data?.formation || "4-3-3";
 
-  } catch (err) {
+  // 🔥 HER ↓↓↓
+  if (data?.players) {
+    squad.forEach(player => {
+      const saved = Object.values(data.players).find(p =>
+  p.name.split(" ")[0] === player.name
+);
+      if (saved) {
+        player.present = saved.present !== false;
+      }
+    });
+  }
+
+} catch (err) {
+	
     console.error("Feil ved henting:", err);
     currentLineup = [];
     currentFormation = "4-3-3";
@@ -490,24 +518,54 @@ el.innerHTML = `
     el.style.boxShadow = "0 0 10px rgba(250,204,21,0.7)";
   }
 
-  el.onclick = () => {
-    if (isPlayerReadOnly()) return;
+el.onclick = () => {
+  if (isPlayerReadOnly()) return;
 
-    const existing = currentLineup.find(p => p.name === player.name);
+  const isAlreadySelected =
+    selectedPlayerName === player.name ||
+    selectedLineupPlayer?.name === player.name;
 
-    if (existing) {
-      selectedLineupPlayer = existing;
-      selectedPlayerName = null;
-    } else {
-      selectedPlayerName = player.name;
-      selectedLineupPlayer = null;
+  // 🔥 Hvis trykker på samme spiller igjen → toggle present
+  if (isAlreadySelected && !player.isLoan) {
+
+    player.present = !player.present;
+
+    if (!player.present) {
+      currentLineup = currentLineup.filter(p => p.name !== player.name);
     }
+
+    selectedPlayerName = null;
+    selectedLineupPlayer = null;
 
     renderPlayerList();
     renderLineup();
-  };
+	
+	  saveLineup();
+	  
+    return;
+  }
 
+  // 🔥 Vanlig select
+  const existing = currentLineup.find(p => p.name === player.name);
+
+  if (existing) {
+    selectedLineupPlayer = existing;
+    selectedPlayerName = null;
+  } else {
+    selectedPlayerName = player.name;
+    selectedLineupPlayer = null;
+  }
+
+  renderPlayerList();
+  renderLineup();
+};
+
+if (player.present === false) {
+  el.style.opacity = "0.4";
+  el.style.textDecoration = "line-through";
+}
   return el;
+ 
 }
 
 function appendSection(titleText, names) {
@@ -529,7 +587,15 @@ function renderPlayerList() {
   playerListDiv.innerHTML = "";
 
 const onPitch = squad.filter(player => isPlayerOnPitch(player));
-const bench = squad.filter(player => !isPlayerOnPitch(player));
+
+const bench = squad
+  .filter(player => !isPlayerOnPitch(player))
+  .sort((a, b) => {
+    // 🔥 ikke tilstede nederst
+    if (a.present === false && b.present !== false) return 1;
+    if (a.present !== false && b.present === false) return -1;
+    return 0;
+  });
 
   appendSection("På banen", onPitch);
   appendSection("Benk", bench);
@@ -718,6 +784,13 @@ function handlePitchMouseDown(e) {
 
   // 2) Legg til eller flytt valgt spiller fra lista
   if (selectedPlayerName) {
+
+  const playerObj = squad.find(p => p.name === selectedPlayerName);
+
+  if (!playerObj?.present) {
+    alert("Spilleren er ikke tilstede");
+    return;
+  }
     const existingPlayer = currentLineup.find(
       (player) => player.name === selectedPlayerName
     );

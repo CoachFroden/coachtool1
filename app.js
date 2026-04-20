@@ -149,6 +149,16 @@ function isReadyForFirestore() {
   return auth.currentUser && matchState.userRole && matchState.matchId;
 }
 
+function createPlayer({ id, name }) {
+  return {
+    id,
+    name,
+    present: true,
+    starter: false,
+    intervals: [],
+    cards: []
+  };
+}
 
 /* ======================================================
    ELEMENT REFERENCES
@@ -278,6 +288,7 @@ matchState.players.home[id] = createPlayer({ id, name });
 
     // legg til i squad (ikke automatisk på banen)
   });
+  sanitizePlayers();
 
   openSquadModal(); // 🔥 viktig – oppdater UI
 
@@ -297,7 +308,7 @@ function populateGoalScorers(team) {
   const onField = matchState.squad.onField.home;
 
   Object.values(matchState.players.home)
-    .filter(p => isOnField(p.id))
+    .filter(p => p && p.id && isOnField(p.id))
     .forEach(player => {
       const opt = document.createElement("option");
       opt.value = player.id;
@@ -543,9 +554,9 @@ function updateUIByStatus() {
     preMatch.classList.remove("hidden");
     matchUI.classList.remove("hidden");
 	teams.style.display = "flex";
-
+    actionCard.style.display = "none";
     clockSection.style.display = "none";
-    matchControls.style.display = "none";
+    matchControls.style.display = "block";
    // events.style.display = "none";
    // extraEvents.style.display = "none";
     eventLog.style.display = "none";
@@ -558,7 +569,7 @@ function updateUIByStatus() {
 
     clockSection.style.display = "block";
     matchControls.style.display = "block";
-actionCard.style.display = "block";
+    actionCard.style.display = "block";
     eventLog.style.display = "block";
   }
 }
@@ -637,6 +648,35 @@ function formatMatchMinute(timeMs) {
   return `${baseMin} + ${overtimeMin}`;
 }
 
+function sanitizePlayers() {
+  if (!matchState.players?.home) return;
+
+  Object.keys(matchState.players.home).forEach(id => {
+    const p = matchState.players.home[id];
+
+    if (!p || !p.id) {
+      delete matchState.players.home[id];
+      return;
+    }
+
+    if (!Array.isArray(p.intervals)) p.intervals = [];
+    if (!Array.isArray(p.cards)) p.cards = [];
+
+    if (typeof p.present !== "boolean") p.present = false;
+    if (typeof p.starter !== "boolean") p.starter = false;
+
+    // 🔥 NY: sikre navn
+    if (!p.name) p.name = "Ukjent";
+  });
+}
+
+function syncUI() {
+  updateScoreboard();
+  renderEvents();
+  updateControls();
+  updateUIByStatus();
+  updatePlayingTimeUI();
+}
 
 /* ======================================================
    EVENT LOGGING (DISKRET)
@@ -766,29 +806,28 @@ function makeSubstitution(outId, inId, timeMs) {
   const outPlayer = matchState.players.home[outId];
   const inPlayer = matchState.players.home[inId];
 
-  // avslutt intervallet til spilleren som går ut
+  if (!outPlayer || !inPlayer) return;
+
   const lastInterval = outPlayer.intervals.at(-1);
   if (lastInterval && lastInterval.out === null) {
     lastInterval.out = timeMs;
   }
 
-  // start intervallet til spilleren som går inn
-  inPlayer.intervals.push({
-    in: timeMs,
-    out: null
-  });
+  // 🔥 KUN start nytt interval hvis kampen er LIVE
+  if (matchState.status === "LIVE") {
+    inPlayer.intervals.push({
+      in: timeMs,
+      out: null
+    });
+  }
 
-  // oppdater hvem som er på banen
   removeFromField(outId);
   addToField(inId);
 
-  // 🔔 LOGG HENDELSEN
   const minuteText = formatMatchMinute(timeMs);
-addEvent(
-  `🔁 ${minuteText} – ${outPlayer.name} ut, ${inPlayer.name} inn`
-);
-saveLiveUpdate();
+  addEvent(`🔁 ${minuteText} – ${outPlayer.name} ut, ${inPlayer.name} inn`);
 
+  saveLiveUpdate();
 }
 
 function handleRedCard(playerId, timeMs) {
@@ -923,17 +962,12 @@ startBtn.addEventListener("click", async () => {
     updatedAt: serverTimestamp()
   }, { merge: true });
 
-  addEvent("Kamp startet");
+addEvent("Kamp startet");
 
-  startPlayingTime();
-  startClock();
+startPlayingTime();
+startClock();
 
-  updateControls();
-  updateUIByStatus();
-
-setTimeout(() => {
-  updatePlayingTimeUI();
-}, 0);
+syncUI();
 });
 
 function pausePlayingTime(timeMs) {
@@ -982,11 +1016,7 @@ setMatchStatus("PAUSED");
 
 addEvent("⏸️ Pause i kampen");
 
-updateControls();
-
-setTimeout(() => {
-  updatePlayingTimeUI();
-}, 0);
+syncUI();
 });
 
 let endConfirm = false;
@@ -1044,9 +1074,9 @@ resumeBtn.addEventListener("click", () => {
 
   resumePlayingTime(matchState.timer.elapsedMs);
 
-  startClock();
-  addEvent("▶️ 2. omgang startet");
-  updateControls();
+startClock();
+addEvent("▶️ 2. omgang startet");
+syncUI();
 });
 
 document.getElementById("game-clock").textContent = "00:00";
@@ -1464,17 +1494,6 @@ function setLoginMessage(text, type = "") {
 
 document.getElementById("squadBtn").addEventListener("click", openSquadModal);
 
-function createPlayer({ id, name }) {
-  return {
-    id,
-    name,
-    present: true,
-    starter: false,
-    intervals: [],
-    cards: []
-  };
-}
-
 function openSquadModal() {
 	 isSquadModalOpen = true;
 	const squadLocked = !["NOT_STARTED", "UPCOMING"].includes(matchState.status);
@@ -1482,16 +1501,14 @@ function openSquadModal() {
   list.innerHTML = "";
   
   // 🔥 INIT DEFAULT STATE (VIKTIG)
-if (!matchState.lineupConfirmed) {
-  HOME_SQUAD.forEach(p => {
-    if (!matchState.players.home[p.id]) {
-matchState.players.home[p.id] = createPlayer({
-  id: p.id,
-  name: p.name
+HOME_SQUAD.forEach(p => {
+  if (!matchState.players.home[p.id]) {
+    matchState.players.home[p.id] = createPlayer({
+      id: p.id,
+      name: p.name
+    });
+  }
 });
-    }
-  });
-}
   
   const saveBtn = document.getElementById("saveSquadBtn");
 
@@ -1504,10 +1521,12 @@ if (squadLocked) {
 }
 
   Object.values(matchState.players.home).forEach(player => {
+
+  if (!player || !player.id) return;
+
   const li = document.createElement("li");
   li.className = "squad-row";
   li.dataset.playerId = player.id;
-  
 
   /* ===== TILSTEDE ===== */
   const presentLabel = document.createElement("label");
@@ -1550,9 +1569,18 @@ if (starterCheckbox.checked) {
 
   /* ===== REGEL: ikke tilstede => ikke starter ===== */
 presentCheckbox.addEventListener("change", () => {
+
+  const playerId = li.dataset.playerId;
+  const player = matchState.players.home[playerId];
+  if (!player) return;
+
+  player.present = presentCheckbox.checked;
+
   if (!presentCheckbox.checked) {
+    player.starter = false;
     starterCheckbox.checked = false;
     starterCheckbox.disabled = true;
+
     li.classList.remove("is-starter");
     li.classList.add("not-present");
   } else {
@@ -1566,19 +1594,24 @@ presentCheckbox.addEventListener("change", () => {
   /* ===== FARGEBYTTE RØD / GRØNN ===== */
 starterCheckbox.addEventListener("change", (e) => {
 
-  // 🔥 KUN hvis bruker faktisk klikker
+  const playerId = li.dataset.playerId;
+  const player = matchState.players.home[playerId];
+  if (!player) return;
+
   if (e.isTrusted) {
     const currentStarters =
       document.querySelectorAll(".squad-row.is-starter").length;
 
     if (starterCheckbox.checked && currentStarters >= MAX_STARTERS) {
       starterCheckbox.checked = false;
-      alert(`Maks ${MAX_STARTERS} startere`);
       return;
     }
   }
 
+  player.starter = starterCheckbox.checked;
+
   li.classList.toggle("is-starter", starterCheckbox.checked);
+
   updateStarterCounter();
 });
 
@@ -1587,7 +1620,7 @@ starterCheckbox.addEventListener("change", (e) => {
   nameSpan.className = "player-name";
   nameSpan.textContent = player.name;
 
-if (player.id.startsWith("loan_")) {
+if (player.id && player.id.startsWith("loan_")) {
   nameSpan.style.color = "#60a5fa"; // blå
 }
 
@@ -1614,16 +1647,19 @@ select.appendChild(placeholder);
 
 
   // Kun spillere som er på banen
-  matchState.squad.onField.home.forEach(id => {
-    const p = matchState.players.home[id];
-    if (!p) return;
-	if (p.cards?.some(c => c.type === "red")) return; // skjul utviste
+Object.values(matchState.players.home).forEach(p => {
+  if (!p) return;
+  if (p.cards?.some(c => c.type === "red")) return;
 
-    const opt = document.createElement("option");
-    opt.value = p.id;
-    opt.textContent = p.name;
-    select.appendChild(opt);
-  });
+  const opt = document.createElement("option");
+  opt.value = p.id;
+
+  opt.textContent = isOnField(p.id)
+    ? p.name
+    : p.name + " (benk)";
+
+  select.appendChild(opt);
+});
 
   // nullstill radioknapper
   document
@@ -1760,47 +1796,36 @@ document.getElementById("saveSquadBtn").addEventListener("click", () => {
     return;
   }
 
-  const newPlayers = {};
-  const newOnField = [];
+const newOnField = [];
 
-  document.querySelectorAll("#squadList li").forEach(li => {
-    const id = li.dataset.playerId;
-    const [present, starter] = li.querySelectorAll("input");
+document.querySelectorAll("#squadList li").forEach(li => {
+  const id = li.dataset.playerId;
+  const [present, starter] = li.querySelectorAll("input");
 
-    const existing = matchState.players.home[id];
+  const player = matchState.players.home[id];
+  if (!player) return;
 
-    if (!present.checked) return;
+  player.present = present.checked;
+  player.starter = starter.checked;
 
-    newPlayers[id] = {
-      id,
-      name: existing.name,
-      present: true,
-      starter: starter.checked,
-      intervals: [],
-      cards: existing.cards || []
-    };
-
-    if (starter.checked) {
-      newOnField.push(id);
-    }
-  });
-
-  matchState.players.home = newPlayers;
-  matchState.squad.onField.home = newOnField;
-  
-  matchState.lineupConfirmed = true;
-  isSquadModalOpen = false;
-document.getElementById("squadModal").classList.add("hidden");
-updateControls();
-updatePlayingTimeUI();
-
+  if (starter.checked) {
+    newOnField.push(id);
+  }
 });
 
-// matchState.lineupConfirmed = true;
-// document.getElementById("matchUI").classList.remove("hidden");
-// updateControls();
-// document.getElementById("squadModal").classList.add("hidden");
-// updatePlayingTimeUI();
+matchState.squad.onField.home = newOnField;
+  
+  sanitizePlayers();
+  
+matchState.lineupConfirmed = true;
+console.log("STATUS:", matchState.status);
+console.log("LINEUP:", matchState.lineupConfirmed);
+saveLiveUpdate();
+isSquadModalOpen = false;
+document.getElementById("squadModal").classList.add("hidden");
+syncUI();
+
+});
 
 document.getElementById("cancelSquadBtn")
   .addEventListener("click", () => {
@@ -1868,6 +1893,15 @@ if (!user) {
   window.location.href = "index.html";
   return;
 }
+
+// 🔥 LOGG INNLOGGING
+await setDoc(
+  doc(collection(db, "userLogins", user.uid, "sessions")),
+  {
+    email: user.email,
+    loginAt: serverTimestamp()
+  }
+);
 
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
@@ -1978,6 +2012,7 @@ const meta = {
   const starters = [];
 
   Object.values(matchState.players.home).forEach(player => {
+	    if (!player || !player.id) return;
     if (player.present) {
       present.push({
         id: player.id,
@@ -2094,6 +2129,7 @@ try {
     },
     players: matchState.players.home,
     onField: matchState.squad.onField.home,
+	lineupConfirmed: matchState.lineupConfirmed,
     updatedAt: serverTimestamp()
   };
 
@@ -2333,67 +2369,75 @@ awayTeamInput.value =
   matchState.score = data.score || { our: 0, their: 0 };
   matchState.events = data.events || [];
 
+matchState.lineupConfirmed = data.lineupConfirmed ?? false;
+
   /* =========================
      PLAYERS (KJERNE)
   ========================= */
 
-if (data.players) {
-  // 🔥 Kamp er startet → bruk ekte state
-  matchState.players.home = data.players;
+matchState.players.home = {};
 
-} else if (data.lineup && data.lineup.length > 0) {
-  // 🔥 Før kamp → bygg fra lineup
-  matchState.players.home = {};
-  matchState.squad.onField.home = [];
-
-  // lag hele troppen først
-  HOME_SQUAD.forEach(p => {
-    matchState.players.home[p.id] = {
-      id: p.id,
-      name: p.name,
-      present: true,
-      starter: false,
-      intervals: [],
-      cards: []
-    };
-  });
-
-  // sett de som er valgt i lineup
-  data.lineup.forEach((p) => {
-    const firstName = p.name.split(" ")[0];
-    const squadPlayer = HOME_SQUAD.find(s => s.name === firstName);
-    if (!squadPlayer) return;
-
-    matchState.players.home[squadPlayer.id].present = true;
-    matchState.players.home[squadPlayer.id].starter = true;
-
-    matchState.squad.onField.home.push(squadPlayer.id);
-  });
-
-  matchState.lineupConfirmed = true;
-}
-
-  // 🔥 sørg for struktur
-Object.values(matchState.players.home).forEach(p => {
-  if (!p.intervals) p.intervals = [];
-  if (!p.cards) p.cards = [];
-  if (p.present === undefined) p.present = false;
-  if (p.starter === undefined) p.starter = false;
+// 1. lag alle spillere først
+HOME_SQUAD.forEach(p => {
+  matchState.players.home[p.id] = {
+    id: p.id,
+    name: p.name,
+    present: false,
+    starter: false,
+    intervals: [],
+    cards: []
+  };
 });
 
-  // 🔥 fallback hvis players mangler noen
-  (data.squad?.present || []).forEach(p => {
-    if (!matchState.players.home[p.id]) {
-      matchState.players.home[p.id] = {
-        id: p.id,
-        name: p.name,
-        present: true,
-        starter: false,
-        intervals: [],
-        cards: []
-      };
-    }
+// 2. legg inn Firestore-data oppå
+if (data.players) {
+  Object.values(data.players).forEach(p => {
+    if (!p?.name) return;
+
+    const firstName = p.name.split(" ")[0].trim().toLowerCase();
+
+    const squadPlayer = HOME_SQUAD.find(
+      s => s.name.trim().toLowerCase() === firstName
+    );
+
+    if (!squadPlayer) return;
+
+    matchState.players.home[squadPlayer.id] = {
+      ...matchState.players.home[squadPlayer.id],
+      present: p.present === true
+    };
   });
+}
+
+  // 2️⃣ Gå gjennom lineup og sett riktig spiller
+const hasSavedStarters =
+  Object.values(matchState.players.home || {})
+    .some(p => p.starter);
+
+if (!hasSavedStarters && data.lineup && data.lineup.length > 0) {
+
+  data.lineup.forEach(p => {
+    if (!p.name) return;
+
+    const firstName = p.name.split(" ")[0].trim().toLowerCase();
+
+    const squadPlayer = HOME_SQUAD.find(
+      s => s.name.trim().toLowerCase() === firstName
+    );
+
+    if (!squadPlayer) {
+      console.warn("Fant ikke spiller:", p.name);
+      return;
+    }
+
+    const player = matchState.players.home[squadPlayer.id];
+
+    player.present = true;
+    player.starter = true;
+
+    matchState.squad.onField.home.push(player.id);
+  });
+}
 
   /* =========================
      ON FIELD (VIKTIG)
@@ -2429,8 +2473,6 @@ matchState.squad.onField.home.forEach(id => {
   }
 });
 
-matchState.lineupConfirmed =
-  matchState.squad.onField.home.length > 0;
   updateControls();
 
   /* =========================
@@ -2495,11 +2537,9 @@ if (overtimeMs > 0) {
   /* =========================
      UI UPDATE
   ========================= */
+sanitizePlayers();
 
-updateScoreboard();
-renderEvents();
-updateControls();
-updateUIByStatus();
+syncUI();
 teams.style.display = "flex";
 populateGoalScorers("home");
 
@@ -2527,6 +2567,9 @@ onSnapshot(coachRef, (snap) => {
 
   if (!data.lineup) return;
 
+// 🔥 VIKTIG: ikke overskriv hvis vi allerede har lagret starters
+if (data.lineupConfirmed) return;
+
   const newOnField = [];
 
   data.lineup.forEach(p => {
@@ -2544,8 +2587,10 @@ Object.values(matchState.players.home).forEach(p => {
 
 // sett nye startere fra lineup
 data.lineup.forEach(p => {
-  const firstName = p.name.split(" ")[0];
-  const squadPlayer = HOME_SQUAD.find(s => s.name === firstName);
+  const firstName = p.name.split(" ")[0].trim().toLowerCase();
+  const squadPlayer = HOME_SQUAD.find(
+  s => s.name.trim().toLowerCase() === firstName
+);
   if (!squadPlayer) return;
 
   if (matchState.players.home[squadPlayer.id]) {
@@ -2559,7 +2604,6 @@ if (isSquadModalOpen) {
   openSquadModal();
 }
 });
-}
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -2608,3 +2652,4 @@ document.getElementById("backBtn")?.addEventListener("click", () => {
   // 🔥 gå tilbake til oversikt
   window.location.href = "oversikt.html"; // <- juster hvis siden heter noe annet
 });
+}
