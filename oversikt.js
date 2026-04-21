@@ -8,6 +8,7 @@ import {
 import {
   doc,
   getDoc,
+  setDoc,   // ← LEGG TIL DENNE
   collection,
   getDocs,
   query,
@@ -720,6 +721,7 @@ matchSelect.addEventListener("change", async () => {
 });
 
 async function loadUpcomingMatches() {
+	
   setError("");
   selectedPlayerEl.textContent = "Kommende kamper";
   
@@ -835,24 +837,24 @@ await addDoc(collection(db, "matches"), {
     const matchesRef = collection(db, "matches");
     const snap = await getDocs(matchesRef);
 
-    const rows = [];
+const rows = [];
 snap.forEach(d => {
   const m = d.data() || {};
 
-  // Vis alt som ikke er avsluttet
-  if (m.status !== "ENDED") {
-		  
-rows.push({
-  id: d.id,
-  opponent: m?.meta?.opponent || "(ukjent)",
-  date: m?.meta?.date || null,
-  time: m?.meta?.time || "",
-  venueType: m?.meta?.venueType || null,
-  venueName: m?.meta?.venueName || "",
-  type: m?.meta?.type || null   // ← LEGG TIL DENNE
-});
-      }
+  console.log("MATCH:", d.id, m.status); // 🔥 HER SKAL DEN VÆRE
+
+  if ((m.status || "").toUpperCase() !== "ENDED") {
+    rows.push({
+      id: d.id,
+      opponent: m?.meta?.opponent || "(ukjent)",
+      date: m?.meta?.date || null,
+      time: m?.meta?.time || "",
+      venueType: m?.meta?.venueType || null,
+      venueName: m?.meta?.venueName || "",
+      type: m?.meta?.type || null
     });
+  }
+});
 
 rows.sort((a, b) => {
 
@@ -1494,3 +1496,26 @@ document.getElementById("openMatchAppBtn")
   ?.addEventListener("click", () => {
     window.location.href = "kamp.html";
   });
+  
+  window.fixMatch = async function (oldId, newId) {
+  const oldRef = doc(db, "matches", oldId);
+  const newRef = doc(db, "matches", newId);
+
+  const newSnap = await getDoc(newRef);
+
+  if (!newSnap.exists()) {
+    console.error("Ny kamp finnes ikke");
+    return;
+  }
+
+  const newData = newSnap.data();
+
+  await setDoc(oldRef, {
+    ...newData,
+    status: "ENDED"
+  }, { merge: true });
+
+  await deleteDoc(newRef);
+
+  console.log("Ferdig. Kamp fikset.");
+};
