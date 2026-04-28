@@ -33,126 +33,172 @@
 
 <script type="module">
 
-"use strict";
+import { db } from "./firebase-refleksjon.js";
 
-import { auth, db } from "./firebase-refleksjon.js";
 import {
   collection,
-  query,
-  where,
   getDocs,
-  doc,
-  setDoc,
-  serverTimestamp
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 import {
+  getAuth,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
-// 🔥 GLOBAL SESSION
-let trackingStarted = false;
-let sessionRef = null;
+const logList = document.getElementById("logList");
 
-// 🔥 OPPDATER ONLINE STATUS
-async function updateLastActive(user) {
-  if (!user) return;
+function goBack() {
+  window.location.href = "fremside.html";
+}
+window.goBack = goBack;
 
-  await setDoc(
-    doc(db, "users", user.uid),
-    {
-      lastActiveAt: serverTimestamp()
-    },
-    { merge: true }
-  );
+/* =========================
+   HENT DATA (ROBUST)
+========================= */
+async function loadUsersWithSessions() {
+  const usersSnap = await getDocs(collection(db, "users"));
+
+  const rows = [];
+
+  for (const docSnap of usersSnap.docs) {
+    try {
+      const data = docSnap.data();
+      const userId = docSnap.id;
+
+      const name = data.name || "Ukjent";
+
+      const lastActive = data.lastActiveAt
+        ? data.lastActiveAt.toDate()
+        : null;
+
+      // 🔥 hent sessions
+      const sessionsRef = collection(db, "users", userId, "activitySessions");
+
+      let sessions = [];
+
+      try {
+        const sessionsSnap = await getDocs(sessionsRef);
+
+        sessionsSnap.forEach(s => {
+          const d = s.data();
+
+          if (!d.start || !d.lastActive) return;
+
+          sessions.push({
+            start: d.start.toDate(),
+            lastActive: d.lastActive.toDate()
+          });
+        });
+
+      } catch (e) {
+        console.warn("Sessions mangler for:", userId);
+      }
+
+      sessions.sort((a, b) => b.lastActive - a.lastActive);
+
+      rows.push({
+        name,
+        lastActive,
+        sessions
+      });
+
+    } catch (err) {
+      console.error("Feil bruker:", docSnap.id, err);
+    }
+  }
+
+  return rows;
 }
 
-// 🔥 START SESSION TRACKING
-async function startTracking(user){
-  if(trackingStarted) return;
-  trackingStarted = true;
+/* =========================
+   RENDER UI
+========================= */
+function renderUsers(rows) {
+  logList.innerHTML = "";
 
-  // 🔹 lag ny session
-  sessionRef = doc(collection(db, "users", user.uid, "activitySessions"));
+  const now = new Date();
 
-  await setDoc(sessionRef, {
-    start: serverTimestamp(),
-    lastActive: serverTimestamp()
+  rows.sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0));
+
+  rows.forEach(r => {
+
+    const diffMin = r.lastActive
+      ? (now - r.lastActive) / (1000 * 60)
+      : 999;
+
+    let statusColor = "#ef4444";
+    let statusText = "Offline";
+
+    if (diffMin < 2) {
+      statusColor = "#22c55e";
+      statusText = "Online nå";
+    } else if (diffMin < 10) {
+      statusColor = "#f59e0b";
+      statusText = "Nylig aktiv";
+    }
+
+    const timeText = r.lastActive
+      ? r.lastActive.toLocaleString("no-NO")
+      : "Ukjent";
+
+    // 🔥 siste session
+    const latestSession = r.sessions[0];
+
+    let sessionText = "Ingen økter";
+
+    if (latestSession) {
+      const durationMin = Math.floor(
+        (latestSession.lastActive - latestSession.start) / (1000 * 60)
+      );
+
+      sessionText = `${latestSession.start.toLocaleTimeString("no-NO")} - ${latestSession.lastActive.toLocaleTimeString("no-NO")} (${durationMin} min)`;
+    }
+
+    const div = document.createElement("div");
+    div.className = "coach-card";
+
+    div.innerHTML = `
+      <div class="coach-icon">👤</div>
+      <div class="coach-title" style="color:${statusColor}">
+        ${r.name}
+      </div>
+      <div class="coach-desc">
+        ${statusText}<br>
+        Sist aktiv: ${timeText}<br>
+        <small>${sessionText}</small>
+      </div>
+    `;
+
+    logList.appendChild(div);
   });
 
-  // 🔹 oppdater hvert 30 sek
-  setInterval(() => {
-
-    if (!auth.currentUser) return;
-
-    // 🔥 oppdater online status
-    setDoc(
-      doc(db, "users", user.uid),
-      { lastActiveAt: serverTimestamp() },
-      { merge: true }
-    );
-
-    // 🔥 oppdater session
-    setDoc(sessionRef, {
-      lastActive: serverTimestamp()
-    }, { merge: true });
-
-  }, 30000);
+  if (rows.length === 0) {
+    logList.innerHTML = `
+      <div class="coach-card">
+        <div class="coach-title">Ingen spillere</div>
+        <div class="coach-desc">Ingen aktivitet enda</div>
+      </div>
+    `;
+  }
 }
 
-// 🔥 AUTH
-onAuthStateChanged(auth, async (user) => {
+/* =========================
+   AUTH + LIVE UPDATE
+========================= */
+const auth = getAuth();
+
+onAuthStateChanged(auth, (user) => {
   if (!user) {
     window.location.href = "index.html";
     return;
   }
 
-  // 🔥 første ping
-  updateLastActive(user);
-
-  // 🔥 start tracking + session
-  startTracking(user);
-
-  // 🔹 hent spillerinfo
-  const q = query(
-    collection(db, "spillere"),
-    where("uid", "==", user.uid)
-  );
-
-  const snap = await getDocs(q);
-
-  if (snap.empty) return;
-
-  const player = snap.docs[0].data();
-
-  const nameEl = document.getElementById("player-name");
-  const roleEl = document.getElementById("player-role");
-
-  if (nameEl && roleEl) {
-    nameEl.textContent = player.navn;
-    roleEl.textContent = player.rolle || "";
-  }
+  onSnapshot(collection(db, "users"), async () => {
+    const rows = await loadUsersWithSessions();
+    renderUsers(rows);
+  });
 });
-
-// NAV
-window.goTo = function(page){
-  window.location.href = page;
-};
-
-// LOGOUT
-const logoutBtn = document.getElementById("logoutBtn");
-
-if (logoutBtn) {
-  logoutBtn.onclick = () => {
-    auth.signOut().then(() => {
-      window.location.href = "index.html";
-    });
-  };
-}
-
-window.goBack = function() {
-  window.location.href = "minside.html";
-};
 
 </script>
 
