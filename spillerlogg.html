@@ -37,12 +37,7 @@ import { db } from "./firebase-refleksjon.js";
 
 import {
   collection,
-  getDocs,
-  getDoc,
-  doc,
-  query,
-  orderBy,
-  limit
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 import {
@@ -57,129 +52,52 @@ function goBack() {
 }
 window.goBack = goBack;
 
-async function loadLog() {
+function renderUsers(snapshot) {
   logList.innerHTML = "";
 
-  const usersSnap = await getDocs(collection(db, "userLogins"));
-
+  const now = new Date();
   const rows = [];
 
-  for (const userDoc of usersSnap.docs) {
-    const userId = userDoc.id;
+  snapshot.forEach(docSnap => {
+    const data = docSnap.data();
 
-    const sessionsRef = collection(db, "userLogins", userId, "sessions");
+    const name = data.name || "Ukjent";
+    const lastActive = data.lastActiveAt
+      ? data.lastActiveAt.toDate()
+      : null;
 
-const q = query(
-  sessionsRef,
-  orderBy("loginAt", "desc"),
-  limit(1)
-);
+    rows.push({
+      name,
+      lastActive
+    });
+  });
 
-// 🔹 hent siste login
-const latestSnap = await getDocs(q);
-
-// 🔹 hent alle sessions (for count)
-const allSnap = await getDocs(sessionsRef);
-
-if (allSnap.empty) continue;
-
-const sessionData = latestSnap.docs[0]?.data();
-
-    let latestTime = null;
-
-    if (sessionData.loginAt) {
-      latestTime = sessionData.loginAt.toDate
-        ? sessionData.loginAt.toDate()
-        : new Date(sessionData.loginAt);
-    }
-
-    // 🔥 hent aktivitet
-    const userSnap = await getDoc(doc(db, "users", userId));
-
-    let lastActive = null;
-
-    if (userSnap.exists() && userSnap.data().lastActiveAt) {
-      const ts = userSnap.data().lastActiveAt;
-
-      lastActive = ts.toDate
-        ? ts.toDate()
-        : new Date(ts);
-    }
-
-    // 🔹 navn
-    let name = userId;
-    if (userSnap.exists()) {
-      name = userSnap.data().name || name;
-    }
-
-   rows.push({
-  name,
-  userId,
-  time: latestTime,
-  lastActive,
-  count: allSnap.size
-});
-  }
-
-  rows.sort((a, b) => (b.lastActive || b.time || 0) - (a.lastActive || a.time || 0));
+  // sorter etter aktivitet
+  rows.sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0));
 
   rows.forEach(r => {
 
-    const formatted = r.time
-      ? r.time.toLocaleString("no-NO")
-      : "Ukjent tid";
-
-    const latestActivity = r.lastActive && r.time
-  ? (r.lastActive > r.time ? r.lastActive : r.time)
-  : (r.lastActive || r.time);
-
-const activeFormatted = latestActivity
-  ? latestActivity.toLocaleString("no-NO")
-  : "Ukjent tid";
-
-    const now = new Date();
-    const diffHours = r.lastActive
-      ? (now - r.lastActive) / (1000 * 60 * 60)
+    const diffMin = r.lastActive
+      ? (now - r.lastActive) / (1000 * 60)
       : 999;
 
-    let statusColor = "#ef4444"; // rød
-    if (diffHours < 24) statusColor = "#22c55e";
-    else if (diffHours < 72) statusColor = "#f59e0b";
+    let statusColor = "#ef4444"; // 🔴 offline
+    let statusText = "Offline";
+
+    if (diffMin < 2) {
+      statusColor = "#22c55e"; // 🟢 online
+      statusText = "Online nå";
+    } else if (diffMin < 10) {
+      statusColor = "#f59e0b"; // 🟡 nylig
+      statusText = "Nylig aktiv";
+    }
+
+    const timeText = r.lastActive
+      ? r.lastActive.toLocaleString("no-NO")
+      : "Ukjent";
 
     const div = document.createElement("div");
     div.className = "coach-card";
-
-    const historyDiv = document.createElement("div");
-    historyDiv.style.display = "none";
-    historyDiv.style.marginTop = "10px";
-    historyDiv.style.fontSize = "14px";
-
-    // 🔹 hent full historikk
-    const sessionsRef = collection(db, "userLogins", r.userId, "sessions");
-
-    getDocs(sessionsRef).then(snap => {
-      const times = [];
-
-      snap.forEach(docSnap => {
-        const d = docSnap.data();
-
-        if (!d.loginAt) return;
-
-        const t = d.loginAt.toDate
-          ? d.loginAt.toDate()
-          : new Date(d.loginAt);
-
-        times.push(t);
-      });
-
-      times.sort((a, b) => b - a);
-
-      times.forEach(t => {
-        const line = document.createElement("div");
-        line.textContent = t.toLocaleString("no-NO");
-        historyDiv.appendChild(line);
-      });
-    });
 
     div.innerHTML = `
       <div class="coach-icon">👤</div>
@@ -187,25 +105,19 @@ const activeFormatted = latestActivity
         ${r.name}
       </div>
       <div class="coach-desc">
-        Sist aktiv: ${activeFormatted}<br>
-        ${r.count} innlogginger
+        ${statusText}<br>
+        Sist aktiv: ${timeText}
       </div>
     `;
 
-    div.onclick = () => {
-      historyDiv.style.display =
-        historyDiv.style.display === "none" ? "block" : "none";
-    };
-
-    div.appendChild(historyDiv);
     logList.appendChild(div);
   });
 
   if (rows.length === 0) {
     logList.innerHTML = `
       <div class="coach-card">
-        <div class="coach-title">Ingen data enda</div>
-        <div class="coach-desc">Be en spiller logge inn</div>
+        <div class="coach-title">Ingen spillere funnet</div>
+        <div class="coach-desc">Ingen aktivitet enda</div>
       </div>
     `;
   }
@@ -219,7 +131,10 @@ onAuthStateChanged(auth, (user) => {
     return;
   }
 
-  loadLog();
+  // 🔥 LIVE oppdatering
+  onSnapshot(collection(db, "users"), (snapshot) => {
+    renderUsers(snapshot);
+  });
 });
 
 </script>
