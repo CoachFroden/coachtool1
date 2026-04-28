@@ -37,6 +37,7 @@ import { db } from "./firebase-refleksjon.js";
 
 import {
   collection,
+  getDocs,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
@@ -52,25 +53,54 @@ function goBack() {
 }
 window.goBack = goBack;
 
-function renderUsers(snapshot) {
-  logList.innerHTML = "";
+async function loadUsersWithLogins() {
+  const usersSnap = await getDocs(collection(db, "users"));
 
-  const now = new Date();
   const rows = [];
 
-  snapshot.forEach(docSnap => {
+  for (const docSnap of usersSnap.docs) {
     const data = docSnap.data();
+    const userId = docSnap.id;
 
     const name = data.name || "Ukjent";
+
     const lastActive = data.lastActiveAt
       ? data.lastActiveAt.toDate()
       : null;
 
+    // 🔥 hent login historikk
+    const sessionsRef = collection(db, "userLogins", userId, "sessions");
+    const sessionsSnap = await getDocs(sessionsRef);
+
+    const logins = [];
+
+    sessionsSnap.forEach(s => {
+      const d = s.data();
+      if (!d.loginAt) return;
+
+      const t = d.loginAt.toDate
+        ? d.loginAt.toDate()
+        : new Date(d.loginAt);
+
+      logins.push(t);
+    });
+
+    logins.sort((a, b) => b - a);
+
     rows.push({
       name,
-      lastActive
+      lastActive,
+      logins
     });
-  });
+  }
+
+  return rows;
+}
+
+function renderUsers(rows) {
+  logList.innerHTML = "";
+
+  const now = new Date();
 
   // sorter etter aktivitet
   rows.sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0));
@@ -85,16 +115,21 @@ function renderUsers(snapshot) {
     let statusText = "Offline";
 
     if (diffMin < 2) {
-      statusColor = "#22c55e"; // 🟢 online
+      statusColor = "#22c55e";
       statusText = "Online nå";
     } else if (diffMin < 10) {
-      statusColor = "#f59e0b"; // 🟡 nylig
+      statusColor = "#f59e0b";
       statusText = "Nylig aktiv";
     }
 
     const timeText = r.lastActive
       ? r.lastActive.toLocaleString("no-NO")
       : "Ukjent";
+
+    const history = r.logins
+      .slice(0, 5)
+      .map(t => `<div>${t.toLocaleString("no-NO")}</div>`)
+      .join("");
 
     const div = document.createElement("div");
     div.className = "coach-card";
@@ -107,6 +142,10 @@ function renderUsers(snapshot) {
       <div class="coach-desc">
         ${statusText}<br>
         Sist aktiv: ${timeText}
+      </div>
+      <div style="margin-top:8px; font-size:13px; opacity:0.8">
+        <strong>Innlogginger:</strong>
+        ${history || "Ingen logg"}
       </div>
     `;
 
@@ -125,15 +164,16 @@ function renderUsers(snapshot) {
 
 const auth = getAuth();
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "index.html";
     return;
   }
 
-  // 🔥 LIVE oppdatering
-  onSnapshot(collection(db, "users"), (snapshot) => {
-    renderUsers(snapshot);
+  // 🔥 live oppdatering på aktivitet
+  onSnapshot(collection(db, "users"), async () => {
+    const rows = await loadUsersWithLogins();
+    renderUsers(rows);
   });
 });
 
