@@ -2391,7 +2391,7 @@ HOME_SQUAD.forEach(p => {
 
 // 2. legg inn Firestore-data oppå
 if (data.players) {
-  Object.values(data.players).forEach(p => {
+  Object.entries(data.players).forEach(([id, p]) => {
     if (!p?.name) return;
 
     const firstName = p.name.split(" ")[0].trim().toLowerCase();
@@ -2400,12 +2400,23 @@ if (data.players) {
       s => s.name.trim().toLowerCase() === firstName
     );
 
-    if (!squadPlayer) return;
-
-    matchState.players.home[squadPlayer.id] = {
-      ...matchState.players.home[squadPlayer.id],
-      present: p.present === true
-    };
+    if (squadPlayer) {
+      // vanlig spiller
+      matchState.players.home[squadPlayer.id] = {
+        ...matchState.players.home[squadPlayer.id],
+        present: p.present === true
+      };
+    } else {
+      // 🔥 NY: lånespiller
+      matchState.players.home[id] = {
+        id: id,
+        name: p.name,
+        present: true,
+        starter: false,
+        intervals: [],
+        cards: []
+      };
+    }
   });
 }
 
