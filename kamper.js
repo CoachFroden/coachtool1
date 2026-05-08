@@ -453,9 +453,10 @@ try {
   // 🔥 HER ↓↓↓
   if (data?.players) {
     squad.forEach(player => {
-      const saved = Object.values(data.players).find(p =>
-  p.name.split(" ")[0] === player.name
-);
+const saved = data.players?.[player.id];
+if (saved) {
+  player.present = saved.present !== false;
+}
       if (saved) {
         player.present = saved.present !== false;
       }
