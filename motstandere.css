@@ -5,6 +5,7 @@
   color: #e8eef7;
 }
 * { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body { margin: 0; min-height: 100vh; background: #07111f; }
 button, input, select, textarea, a { font: inherit; }
 .page-shell { width: min(1050px, calc(100% - 24px)); margin: 0 auto; padding: 24px 0 52px; }
@@ -14,13 +15,13 @@ h2 { margin: 0; }
 .eyebrow { margin: 0; color: #7dd3fc; text-transform: uppercase; letter-spacing: .13em; font-size: .7rem; font-weight: 800; }
 .subtitle, .muted { color: #9eb0c4; }
 .subtitle { margin: 0; max-width: 680px; }
-.top-nav { display: flex; gap: 8px; }
+.top-nav { display: flex; gap: 8px; flex-wrap: wrap; }
 .top-nav a, button { border: 1px solid #294158; background: #102238; color: #e8eef7; border-radius: 10px; padding: 9px 12px; text-decoration: none; cursor: pointer; }
 button:hover, .top-nav a:hover { border-color: #38bdf8; }
 .primary { background: #0c4a6e; border-color: #0ea5e9; }
 .ghost { background: transparent; }
 .privacy-note { border: 1px solid #3a4959; border-left: 4px solid #f59e0b; background: #171d25; border-radius: 12px; padding: 13px 14px; margin-bottom: 16px; color: #d7dee8; font-size: .9rem; }
-.card { background: #0b1a2c; border: 1px solid #1f344b; border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+.card { background: #0b1a2c; border: 1px solid #1f344b; border-radius: 16px; padding: 16px; margin-bottom: 16px; scroll-margin-top: 12px; }
 .section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .picker-row { display: flex; gap: 8px; margin-top: 8px; }
 .picker-row select { flex: 1; }
@@ -34,6 +35,30 @@ textarea { resize: vertical; line-height: 1.4; }
 .save-status { color: #86efac; font-size: .8rem; min-height: 1em; text-align: right; }
 .save-status.error { color: #fca5a5; }
 .hidden { display: none !important; }
+
+.scouting-jumpnav { position: sticky; top: 8px; z-index: 20; display: flex; gap: 7px; overflow-x: auto; padding: 7px; margin: 0 0 14px; background: rgba(7,17,31,.94); border: 1px solid #1f344b; border-radius: 13px; backdrop-filter: blur(12px); }
+.scouting-jumpnav a { flex: 0 0 auto; color: #bcd0e2; text-decoration: none; border: 1px solid #294158; background: #0d2136; border-radius: 999px; padding: 7px 10px; font-size: .78rem; }
+.scouting-jumpnav a:hover { color: #fff; border-color: #38bdf8; }
+.scouting-overview-card { border-color: #26506c; background: linear-gradient(180deg, #0d2236 0%, #0b1a2c 100%); }
+.scouting-overview-head { margin-bottom: 12px; }
+.scouting-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 9px; margin-bottom: 14px; }
+.scouting-stat { border: 1px solid #294158; background: #071522; border-radius: 12px; padding: 11px; }
+.scouting-stat strong { display: block; font-size: 1.25rem; color: #f8fafc; }
+.scouting-stat span { display: block; margin-top: 2px; color: #849bb0; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
+.overview-label { margin: 4px 0 8px; color: #7890a7; text-transform: uppercase; letter-spacing: .07em; font-size: .67rem; font-weight: 800; }
+.scouting-opponent-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px; }
+.scouting-opponent-card { width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px; border-radius: 13px; background: #0d2136; }
+.scouting-opponent-card.active { border-color: #38bdf8; box-shadow: inset 0 0 0 1px #38bdf8; }
+.scouting-opponent-card:hover { background: #102a43; }
+.scouting-opponent-main { min-width: 0; }
+.scouting-opponent-main strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scouting-opponent-main small { display: block; margin-top: 4px; color: #859db1; line-height: 1.3; }
+.scouting-opponent-status { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.scouting-opponent-status b { font-size: .83rem; }
+.scouting-status-dot { display: inline-block; width: 9px; height: 9px; border-radius: 999px; margin-right: 6px; background: #64748b; }
+.scouting-status-dot.complete { background: #4ade80; }
+.scouting-status-dot.waiting { background: #fbbf24; }
+.scouting-status-dot.upcoming { background: #60a5fa; }
 
 .training-focus-intro { margin: 6px 0 0; max-width: 800px; line-height: 1.45; }
 .training-focus-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -104,10 +129,11 @@ textarea { resize: vertical; line-height: 1.4; }
 
 @media (max-width: 760px) {
   .page-header { flex-direction: column; }
-  .form-grid, .form-grid.three, .watch-sections, .report-grid, .training-focus-list { grid-template-columns: 1fr; }
+  .form-grid, .form-grid.three, .watch-sections, .report-grid, .training-focus-list, .scouting-opponent-grid { grid-template-columns: 1fr; }
+  .scouting-stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .picker-row { flex-direction: column; }
   .save-status { text-align: left; }
   .report-head { flex-direction: column; }
   .report-status-wrap { align-items: flex-start; flex-direction: row; }
-  #trackedReportsCard .section-head { flex-direction: column; }
+  #trackedReportsCard .section-head, .scouting-overview-head { flex-direction: column; }
 }
