@@ -29,7 +29,6 @@ const els = {
   allMatchesBtn: document.getElementById("allMatchesBtn"),
   allPlayedBtn: document.getElementById("allPlayedBtn"),
   statsBtn: document.getElementById("statsBtn"),
-  scoutBtn: document.getElementById("scoutBtn"),
   errorMsg: document.getElementById("errorMsg")
 };
 
@@ -80,8 +79,6 @@ async function cleanupDuplicateStartEvents(matches) {
 
     if (startIndexes.length <= 1) continue;
 
-    // Hendelser legges inn med unshift i kampmotoren, så den eldste/originale
-    // kampstarten ligger sist av de like start-hendelsene. Behold bare den.
     const keepIndex = startIndexes[startIndexes.length - 1];
     const cleanedEvents = events.filter((event, index) => {
       if (!isStartEvent(event)) return true;
@@ -227,8 +224,6 @@ async function initForUser(user) {
 
   const matches = await loadMatches();
 
-  // Engangsopprydding av dagens Bønes-kamp. Dette endrer kun duplikate
-  // teksthendelser "Kamp startet" og lar mål, kort, bytter og spilletid stå urørt.
   if (role === "coach") {
     await cleanupDuplicateStartEvents(matches);
   }
@@ -248,7 +243,6 @@ els.logoutBtn.onclick = async () => {
 els.allMatchesBtn.onclick = () => window.location.href = "kampoversikt.html?view=upcoming";
 els.allPlayedBtn.onclick = () => window.location.href = "kampoversikt.html?view=played";
 els.statsBtn.onclick = () => window.location.href = "statistikk.html";
-els.scoutBtn.onclick = () => window.location.href = "motstandere.html";
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
