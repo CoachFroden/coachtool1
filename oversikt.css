@@ -48,11 +48,11 @@ button{cursor:pointer}
 .actionIcon{width:34px;height:34px;display:grid;place-items:center;border-radius:11px;font-size:13px;font-weight:900}
 .actionSecondary{border:1px solid rgba(125,211,252,.18);background:rgba(59,130,246,.07);color:#dbeafe}.actionSecondary .actionIcon{background:rgba(59,130,246,.12);color:#93c5fd}
 .actionPrimary{border:1px solid rgba(96,165,250,.42);background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 10px 26px rgba(37,99,235,.2)}.actionPrimary .actionIcon{background:rgba(255,255,255,.12);color:#fff}
-.mainNav{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-.navCard{min-width:0;min-height:78px;display:grid;grid-template-columns:38px 1fr 14px;align-items:center;gap:10px;padding:13px;border:1px solid var(--line);border-radius:18px;color:inherit;text-decoration:none;text-align:left;transition:transform .12s ease,border-color .12s ease}
+.mainNav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+.navCard{min-width:0;min-height:82px;display:grid;grid-template-columns:36px 1fr;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:18px;color:inherit;text-decoration:none;text-align:left;transition:transform .12s ease,border-color .12s ease}
 .navCard:active{transform:scale(.985)}
-.navIcon{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;border:1px solid rgba(148,163,184,.09);font-size:15px;font-weight:900}
-.navCard strong,.navCard small{display:block}.navCard strong{font-size:12px}.navCard small{margin-top:4px;font-size:8px;line-height:1.25}.navCard b{font-size:17px;font-weight:700}
+.navIcon{width:36px;height:36px;display:grid;place-items:center;border-radius:12px;border:1px solid rgba(148,163,184,.09);font-size:15px;font-weight:900}
+.navCard strong,.navCard small{display:block}.navCard strong{font-size:12px}.navCard small{margin-top:4px;font-size:8px;line-height:1.25}.navCard b{display:none}
 .navUpcoming{background:linear-gradient(145deg,rgba(37,99,235,.18),rgba(13,24,40,.9));border-color:rgba(96,165,250,.26)}
 .navUpcoming .navIcon{background:rgba(37,99,235,.16);color:#93c5fd}.navUpcoming small,.navUpcoming b{color:#7f9fc5}
 .navPlayed{background:linear-gradient(145deg,rgba(22,163,74,.14),rgba(13,24,40,.9));border-color:rgba(74,222,128,.22)}
@@ -78,7 +78,8 @@ button{cursor:pointer}
 .score{font-size:28px;font-weight:950;letter-spacing:-.055em;white-space:nowrap}.score span{margin:0 5px;color:#586d84}.score.win{color:var(--green)}.score.loss{color:var(--red)}.score.draw{color:var(--yellow)}
 .emptyState{padding:18px;border:1px dashed rgba(148,163,184,.16);border-radius:16px;color:#6c8095;font-size:10px;text-align:center}.error{margin:14px 2px;color:#fb7185;font-size:10px}
 .skeletonRow,.skeletonCard{height:74px;border-radius:17px;background:linear-gradient(90deg,rgba(255,255,255,.025),rgba(255,255,255,.06),rgba(255,255,255,.025));background-size:200% 100%;animation:shimmer 1.35s infinite}.skeletonCard{height:86px}@keyframes shimmer{to{background-position:-200% 0}}
-@media(min-width:760px){.appShell{width:min(100%,760px);padding-left:24px;padding-right:24px}.heroCard{padding:27px}.heroCard h2{font-size:42px}.mainNav{grid-template-columns:repeat(5,1fr)}.navCard{grid-template-columns:34px 1fr;min-height:86px;padding:11px}.navIcon{width:34px;height:34px}.navCard b{display:none}}
-@media(max-width:420px){.appShell{padding-left:13px;padding-right:13px}.heroCard{padding:19px}.heroCard h2{font-size:32px}.heroActions{grid-template-columns:1fr}.mainNav{grid-template-columns:1fr 1fr}.navCard{grid-template-columns:34px 1fr 12px;gap:8px;padding:11px;min-height:72px}.navIcon{width:34px;height:34px;border-radius:11px}.navCard strong{font-size:11px}.navCard small{font-size:7.5px}.contentSection{padding:14px}}
+@media(min-width:760px){.appShell{width:min(100%,760px);padding-left:24px;padding-right:24px}.heroCard{padding:27px}.heroCard h2{font-size:42px}.mainNav{grid-template-columns:repeat(4,minmax(0,1fr))}.navCard{min-height:86px;padding:12px}.navIcon{width:36px;height:36px}}
+@media(max-width:620px){.mainNav{grid-template-columns:1fr 1fr}.navCard{min-height:76px}}
+@media(max-width:420px){.appShell{padding-left:13px;padding-right:13px}.heroCard{padding:19px}.heroCard h2{font-size:32px}.heroActions{grid-template-columns:1fr}.mainNav{grid-template-columns:1fr 1fr}.navCard{grid-template-columns:34px 1fr;gap:8px;padding:11px;min-height:72px}.navIcon{width:34px;height:34px;border-radius:11px}.navCard strong{font-size:11px}.navCard small{font-size:7.5px}.contentSection{padding:14px}}
 @media(max-width:350px){.mainNav{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
