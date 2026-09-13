@@ -53,6 +53,15 @@ input, select{
   font-weight: 650;
 }
 
+select{
+  color-scheme: dark;
+}
+
+select option{
+  background:#111827;
+  color:#f8fafc;
+}
+
 .actions{
   display:flex;
   gap: 10px;
