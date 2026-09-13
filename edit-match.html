@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rediger kamp</title>
-  <link rel="stylesheet" href="edit-match.css" />
+  <link rel="stylesheet" href="edit-match.css?v=20260913-2" />
 </head>
 <body>
 
@@ -54,17 +54,17 @@
           </select>
         </label>
 
-        <label>
+        <label id="ourScoreField">
           Vårt mål
           <input id="our" type="number" inputmode="numeric" />
         </label>
 
-        <label>
+        <label id="theirScoreField">
           Deres mål
           <input id="their" type="number" inputmode="numeric" />
         </label>
 
-        <label class="wide">
+        <label id="statusField" class="wide">
           Status
           <select id="status">
             <option value="LIVE">LIVE</option>
@@ -73,27 +73,53 @@
           </select>
         </label>
       </div>
-<button id="toggleEventsBtn" class="btn">
-  Vis hendelser
-</button>
 
-<div id="eventsSection" class="hidden">
-  <h3>Hendelser</h3>
+      <button id="toggleEventsBtn" class="btn">Vis hendelser</button>
 
-  <button id="addEventBtn" class="btn">+ Legg til hendelse</button>
-
-  <div id="eventsList"></div>
-</div>
+      <div id="eventsSection" class="hidden">
+        <h3>Hendelser</h3>
+        <button id="addEventBtn" class="btn">+ Legg til hendelse</button>
+        <div id="eventsList"></div>
+      </div>
 
       <div class="actions">
         <button id="saveBtn" class="btn primary">Lagre</button>
         <button id="deleteBtn" class="btn danger">Slett</button>
       </div>
     </section>
-
   </main>
 
-  <script type="module" src="edit-match.js"></script>
-  <script type="module" src="edit-match-upcoming.js?v=20260913-1"></script>
+  <script type="module" src="edit-match.js?v=20260913-2"></script>
+  <script>
+    (() => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('source') !== 'official') return;
+
+      let attempts = 0;
+      const timer = setInterval(() => {
+        attempts += 1;
+        const status = document.getElementById('status');
+        if (!status) return;
+
+        if (String(status.value || '').toUpperCase() === 'UPCOMING') {
+          clearInterval(timer);
+          document.getElementById('ourScoreField')?.remove();
+          document.getElementById('theirScoreField')?.remove();
+          document.getElementById('statusField')?.remove();
+          document.getElementById('toggleEventsBtn')?.remove();
+          document.getElementById('eventsSection')?.remove();
+
+          const title = document.querySelector('.title h1');
+          const hint = document.getElementById('hint');
+          const backBtn = document.getElementById('backBtn');
+          if (title) title.textContent = 'Rediger kommende kamp';
+          if (hint) hint.textContent = 'Endre dato, klokkeslett, motstander og kampdetaljer.';
+          if (backBtn) backBtn.onclick = () => { window.location.href = 'kamper.html'; };
+        } else if (attempts >= 50) {
+          clearInterval(timer);
+        }
+      }, 100);
+    })();
+  </script>
 </body>
 </html>
