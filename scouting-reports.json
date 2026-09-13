@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-09-04T21:32:00+02:00",
+  "updatedAt": "2026-09-13T15:38:00+02:00",
   "profiles": [
     {
       "key": "mathopen-vadmyra-2",
@@ -96,18 +96,152 @@
           "venue": "Kongsmyren idrettsplass",
           "teamScope": "G14-1",
           "purpose": "Kontroll av førstelaget kort tid før Samnanger-kampen: viser hvilke av nøkkelspillerne som brukes på høyere nivå og dermed kan være aktuelle for toerlaget.",
+          "status": "waiting",
+          "score": "",
+          "squad": [],
+          "goals": [],
+          "higherTeamPlayers": [],
+          "takeaways": [],
+          "summary": "Kampen er passert, men NFF viser fortsatt ikke sluttresultat på lagoversikten. Rapporten holdes derfor åpen til offentlig kampdata med resultat og eventuell tropp/hendelser er publisert.",
+          "sourceUrls": [
+            "https://www.fotball.no/fotballdata/kamp/?fiksId=9184342",
+            "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=19017"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "austrheim",
+      "opponent": "Austrheim",
+      "aliases": ["Austrheim", "Austrheim G14-1"],
+      "matches": [
+        {
+          "id": "nff-12114306006",
+          "date": "2026-09-13",
+          "time": "13:30",
+          "home": "Austrheim",
+          "away": "Austevoll 2",
+          "competition": "G14 3. div. avd. 01 høst",
+          "venue": "Austrheim stadion",
+          "teamScope": "G14-1",
+          "purpose": "Svært relevant kontrollkamp fire dager før Samnanger møter Austrheim; kan vise siste tropp, måltrusler og eventuelle endringer.",
           "status": "upcoming",
           "score": "",
           "squad": [],
           "goals": [],
           "higherTeamPlayers": [],
           "takeaways": [],
-          "summary": "Rapporten fylles når offentlig kamprapport er tilgjengelig etter kampen.",
+          "summary": "NFF hadde ennå ikke publisert sluttresultat da scoutingvakten sjekket kampen. Følges videre.",
           "sourceUrls": [
-            "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=154176"
+            "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=180445",
+            "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=121292"
           ]
         }
       ]
+    },
+    {
+      "key": "austevoll-2",
+      "opponent": "Austevoll 2",
+      "aliases": ["Austevoll 2", "Austevoll G14-2"],
+      "matches": [
+        {
+          "id": "nff-12114306006",
+          "date": "2026-09-13",
+          "time": "13:30",
+          "home": "Austrheim",
+          "away": "Austevoll 2",
+          "competition": "G14 3. div. avd. 01 høst",
+          "venue": "Austrheim stadion",
+          "teamScope": "G14-2",
+          "purpose": "Svært relevant kontrollkamp seks dager før Samnanger møter Austevoll 2; kan vise siste tropp og eventuelle spillere som går mellom lag.",
+          "status": "upcoming",
+          "score": "",
+          "squad": [],
+          "goals": [],
+          "higherTeamPlayers": [],
+          "takeaways": [],
+          "summary": "NFF hadde ennå ikke publisert sluttresultat da scoutingvakten sjekket kampen. Følges videre.",
+          "sourceUrls": [
+            "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=121292",
+            "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=180445"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "bones-2",
+      "opponent": "Bønes 2",
+      "aliases": ["Bønes 2", "Bones 2", "Bønes G14-2"],
+      "matches": [
+        {
+          "id": "nff-12114306012",
+          "date": "2026-09-10",
+          "time": "20:00",
+          "home": "Bønes 2",
+          "away": "Stanghelle/Dale/Vaksdal",
+          "competition": "G14 3. div. avd. 01 høst",
+          "venue": "Fjellsdalen idrettsplass",
+          "teamScope": "G14-2",
+          "purpose": "Nyeste offentlige seriekamp i avdelingen; følges for tropp og hendelser.",
+          "status": "waiting",
+          "score": "2-1",
+          "squad": [],
+          "goals": [],
+          "higherTeamPlayers": [],
+          "takeaways": [],
+          "summary": "Sluttresultatet 2-1 er offentlig på NFF, men full kamprapport med tropp og hendelser er ikke verifisert i denne kjøringen. Rapporten holdes derfor åpen.",
+          "sourceUrls": [
+            "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=19387"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "stanghelle-dale-vaksdal",
+      "opponent": "Stanghelle/Dale/Vaksdal",
+      "aliases": ["Stanghelle/Dale/Vaksdal", "Stanghelle Dale Vaksdal", "Stanghelle G14-1"],
+      "matches": [
+        {
+          "id": "nff-12114306012",
+          "date": "2026-09-10",
+          "time": "20:00",
+          "home": "Bønes 2",
+          "away": "Stanghelle/Dale/Vaksdal",
+          "competition": "G14 3. div. avd. 01 høst",
+          "venue": "Fjellsdalen idrettsplass",
+          "teamScope": "G14-1",
+          "purpose": "Nyeste offentlige seriekamp i avdelingen; følges for tropp og hendelser.",
+          "status": "waiting",
+          "score": "2-1",
+          "squad": [],
+          "goals": [],
+          "higherTeamPlayers": [],
+          "takeaways": [],
+          "summary": "Sluttresultatet 2-1 er offentlig på NFF, men full kamprapport med tropp og hendelser er ikke verifisert i denne kjøringen. Rapporten holdes derfor åpen.",
+          "sourceUrls": [
+            "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=19387",
+            "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=19797"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "eikelandsfjorden",
+      "opponent": "Eikelandsfjorden",
+      "aliases": ["Eikelandsfjorden", "Eikelandsfjorden G14-1"],
+      "matches": []
+    },
+    {
+      "key": "flaktveit-2",
+      "opponent": "Flaktveit 2",
+      "aliases": ["Flaktveit 2", "Flaktveit G14-2"],
+      "matches": []
+    },
+    {
+      "key": "sandviken-varegg-3",
+      "opponent": "Sandviken/Varegg 3",
+      "aliases": ["Sandviken/Varegg 3", "Sandviken Varegg 3", "Sandviken G14-3"],
+      "matches": []
     }
   ]
 }
