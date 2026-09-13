@@ -52,11 +52,29 @@ function formatDate(date, time) {
   }).format(parsed);
 }
 
+function matchKickoff(match) {
+  if (!match?.date) return null;
+  const parsed = new Date(`${match.date}T${match.time || "00:00"}:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function effectiveStatus(match) {
+  if (match?.status === "complete") return "complete";
+  if (match?.status === "waiting") return "waiting";
+  if (match?.status === "upcoming") {
+    const kickoff = matchKickoff(match);
+    if (kickoff && kickoff.getTime() + 2 * 60 * 60 * 1000 < Date.now()) return "waiting";
+    return "upcoming";
+  }
+  return match?.status || "empty";
+}
+
 function statusText(status) {
   return ({
     upcoming: "Planlagt",
-    waiting: "Venter på NFF-data",
-    complete: "Rapport klar"
+    waiting: "Mangler hentet rapport",
+    complete: "Rapport klar",
+    empty: "Ingen rapporter"
   })[status] || "Ukjent status";
 }
 
@@ -88,7 +106,7 @@ function playerName(entry) {
 
 function renderSquad(match) {
   if (!Array.isArray(match.squad) || !match.squad.length) {
-    return `<div class="report-empty">Tropp/startoppstilling er ikke offentlig registrert i rapporten ennå.</div>`;
+    return `<div class="report-empty">Startoppstilling/tropp er ikke hentet fra den direkte NFF-kamprapporten ennå.</div>`;
   }
 
   const starters = match.squad.filter(player => typeof player === "object" && player.role === "starter");
@@ -108,7 +126,7 @@ function renderSquad(match) {
 
 function renderGoals(match) {
   if (!Array.isArray(match.goals) || !match.goals.length) {
-    return `<div class="report-empty">Ingen målscorere/minutter er registrert i rapporten ennå.</div>`;
+    return `<div class="report-empty">Målhendelser er ikke hentet/verifisert fra den direkte NFF-kamprapporten ennå.</div>`;
   }
 
   return `<ul class="report-list">${match.goals.map(goal => {
@@ -150,10 +168,11 @@ function latestMatchForProfile(profile) {
 
 function profileStatus(profile) {
   const matches = profile.matches || [];
-  if (matches.some(match => match.status === "waiting")) return "waiting";
-  if (matches.some(match => match.status === "upcoming")) return "upcoming";
-  if (matches.some(match => match.status === "complete")) return "complete";
-  return "upcoming";
+  if (!matches.length) return "empty";
+  if (matches.some(match => effectiveStatus(match) === "waiting")) return "waiting";
+  if (matches.some(match => effectiveStatus(match) === "upcoming")) return "upcoming";
+  if (matches.some(match => effectiveStatus(match) === "complete")) return "complete";
+  return "empty";
 }
 
 function switchOpponent(name) {
@@ -171,14 +190,14 @@ function renderOverview() {
   if (!opponentGrid || !statsContainer) return;
   const profiles = [...(reportData?.profiles || [])].sort((a, b) => String(a.opponent || "").localeCompare(String(b.opponent || ""), "nb"));
   const matches = allMatches();
-  const complete = matches.filter(match => match.status === "complete").length;
-  const waiting = matches.filter(match => match.status === "waiting").length;
-  const upcoming = matches.filter(match => match.status === "upcoming").length;
+  const complete = matches.filter(match => effectiveStatus(match) === "complete").length;
+  const waiting = matches.filter(match => effectiveStatus(match) === "waiting").length;
+  const upcoming = matches.filter(match => effectiveStatus(match) === "upcoming").length;
 
   statsContainer.innerHTML = [
     [profiles.length, "Motstandere med data"],
     [complete, "Rapporter klare"],
-    [waiting, "Venter på NFF-data"],
+    [waiting, "Mangler innhenting"],
     [upcoming, "Planlagte kamper"]
   ].map(([value, label]) => `<div class="scouting-stat"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`).join("");
 
@@ -197,16 +216,19 @@ function renderOverview() {
   const current = profileForCurrentOpponent();
   opponentGrid.innerHTML = profiles.map(profile => {
     const matches = profile.matches || [];
-    const ready = matches.filter(match => match.status === "complete").length;
-    const waiting = matches.filter(match => match.status === "waiting").length;
-    const upcoming = matches.filter(match => match.status === "upcoming").length;
+    const ready = matches.filter(match => effectiveStatus(match) === "complete").length;
+    const waiting = matches.filter(match => effectiveStatus(match) === "waiting").length;
+    const upcoming = matches.filter(match => effectiveStatus(match) === "upcoming").length;
     const status = profileStatus(profile);
     const latest = latestMatchForProfile(profile);
-    const detail = waiting
-      ? `${waiting} kamp${waiting === 1 ? "" : "er"} venter på komplett NFF-rapport`
-      : ready
-        ? `${ready} ferdig${ready === 1 ? "" : "e"} rapport${ready === 1 ? "" : "er"}${upcoming ? ` · ${upcoming} planlagt` : ""}`
-        : `${upcoming} planlagt${upcoming === 1 ? " kamp" : "e kamper"}`;
+    let detail = "Ingen kamprapporter hentet ennå";
+    if (matches.length) {
+      const bits = [];
+      if (ready) bits.push(`${ready} klar${ready === 1 ? "" : "e"}`);
+      if (waiting) bits.push(`${waiting} mangler innhenting`);
+      if (upcoming) bits.push(`${upcoming} planlagt${upcoming === 1 ? "" : "e"}`);
+      detail = bits.join(" · ") || `${matches.length} registrerte kamper`;
+    }
     return `
       <button class="scouting-opponent-card ${current?.key === profile.key ? "active" : ""}" type="button" data-opponent="${escapeHtml(profile.opponent || "")}">
         <span class="scouting-opponent-main">
@@ -214,7 +236,7 @@ function renderOverview() {
           <small>${escapeHtml(detail)}${latest?.score ? ` · siste resultat ${escapeHtml(latest.score)}` : ""}</small>
         </span>
         <span class="scouting-opponent-status">
-          <b><span class="scouting-status-dot ${escapeHtml(status)}"></span>${escapeHtml(statusText(status))}</b>
+          <b><span class="scouting-status-dot ${escapeHtml(status === "empty" ? "upcoming" : status)}"></span>${escapeHtml(statusText(status))}</b>
           <small>${matches.length} kamp${matches.length === 1 ? "" : "er"}</small>
         </span>
       </button>`;
@@ -235,21 +257,28 @@ function render() {
   }
 
   if (!profile) {
-    container.innerHTML = `<div class="empty">Det finnes ingen automatisk kamprapport for denne motstanderen ennå. Den generelle scoutingvakten kan legge den til når den finner relevant offentlig NFF-data.</div>`;
+    container.innerHTML = `<div class="empty">Det finnes ingen automatisk kamprapport for denne motstanderen ennå. Scoutingvakten skal hente inn kampene fra avdelingen.</div>`;
     if (meta) meta.textContent = reportData?.updatedAt ? "Ingen rapporter for valgt lag ennå." : "";
     return;
   }
 
   const matches = [...(profile.matches || [])].sort((a, b) => `${b.date || ""}${b.time || ""}`.localeCompare(`${a.date || ""}${a.time || ""}`));
   if (meta) {
-    const ready = matches.filter(match => match.status === "complete").length;
-    const waiting = matches.filter(match => match.status === "waiting").length;
-    const upcoming = matches.filter(match => match.status === "upcoming").length;
-    meta.textContent = `${ready} klare · ${waiting} venter · ${upcoming} planlagte`;
+    const ready = matches.filter(match => effectiveStatus(match) === "complete").length;
+    const waiting = matches.filter(match => effectiveStatus(match) === "waiting").length;
+    const upcoming = matches.filter(match => effectiveStatus(match) === "upcoming").length;
+    meta.textContent = `${ready} klare · ${waiting} mangler innhenting · ${upcoming} planlagte`;
   }
 
-  container.innerHTML = matches.map(match => `
-    <article class="tracked-report ${escapeHtml(match.status || "upcoming")}">
+  if (!matches.length) {
+    container.innerHTML = `<div class="empty">Ingen kamper er hentet for dette laget ennå. Dette betyr ikke at laget ikke har spilt; automatisk innhenting skal fylle historikken.</div>`;
+    return;
+  }
+
+  container.innerHTML = matches.map(match => {
+    const status = effectiveStatus(match);
+    return `
+    <article class="tracked-report ${escapeHtml(status === "empty" ? "upcoming" : status)}">
       <div class="report-head">
         <div>
           <div class="report-date">${escapeHtml(formatDate(match.date, match.time))} · ${escapeHtml(match.teamScope || "")}</div>
@@ -258,14 +287,14 @@ function render() {
         </div>
         <div class="report-status-wrap">
           ${match.score ? `<strong class="report-score">${escapeHtml(match.score)}</strong>` : ""}
-          <span class="report-status">${escapeHtml(statusText(match.status))}</span>
+          <span class="report-status">${escapeHtml(statusText(status))}</span>
         </div>
       </div>
 
       <p class="report-purpose">${escapeHtml(match.purpose || "")}</p>
       ${match.summary ? `<div class="report-summary">${escapeHtml(match.summary)}</div>` : ""}
 
-      <details ${match.status === "complete" ? "open" : ""}>
+      <details ${status === "complete" ? "open" : ""}>
         <summary>Spillere og kampdetaljer</summary>
         <div class="report-grid">
           <section><h4>Tropp / oppstilling</h4>${renderSquad(match)}</section>
@@ -275,8 +304,8 @@ function render() {
         </div>
       </details>
       ${renderSources(match)}
-    </article>
-  `).join("");
+    </article>`;
+  }).join("");
 }
 
 async function loadReports() {
