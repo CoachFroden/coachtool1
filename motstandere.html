@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Motstandere og scouting | Coach</title>
-  <link rel="stylesheet" href="motstandere.css?v=20260830-4" />
+  <title>Scouting | Coach</title>
+  <link rel="stylesheet" href="motstandere.css?v=20260913-1" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#07111f" />
 </head>
@@ -13,14 +13,23 @@
     <header class="page-header">
       <div>
         <p class="eyebrow">Samnanger G14</p>
-        <h1>Motstandere</h1>
-        <p class="subtitle">Scouting og kampforberedelser basert kun på offentlig tilgjengelig fotballinformasjon.</p>
+        <h1>Scouting</h1>
+        <p class="subtitle">Motstandere, offentlige NFF-kamprapporter og konkrete kampforberedelser samlet på ett sted.</p>
       </div>
       <nav class="top-nav">
+        <a href="fremside.html">Coach</a>
         <a href="oversikt.html">Oversikt</a>
         <a href="statistikk.html">Statistikk</a>
       </nav>
     </header>
+
+    <nav class="scouting-jumpnav" aria-label="Scouting-seksjoner">
+      <a href="#scoutingOverviewCard">Status</a>
+      <a href="#trackedReportsCard">Kamprapporter</a>
+      <a href="#opponentCard">Motstanderprofil</a>
+      <a href="#watchlistCard">Watchlist</a>
+      <a href="#matchdayCard">Kampdag</a>
+    </nav>
 
     <aside class="privacy-note">
       <strong>Datagrense:</strong> Lagre bare offentlig tilgjengelige fotballopplysninger som kamp, lag, posisjon, mål og sportslige observasjoner. Ikke lagre fødselsdato, kontaktinfo, bilder, helseopplysninger eller private forhold om ungdomsspillere.
@@ -31,6 +40,38 @@
       <div class="picker-row">
         <select id="opponentSelect"></select>
         <button id="addOpponentBtn" type="button">+ Ny motstander</button>
+      </div>
+    </section>
+
+    <section class="card scouting-overview-card" id="scoutingOverviewCard">
+      <div class="section-head scouting-overview-head">
+        <div>
+          <p class="eyebrow">Automatisk scouting</p>
+          <h2>Scoutingstatus</h2>
+          <p class="muted report-intro">Kamper i G14 3. div. avd. 01 høst følges fra offentlig NFF/Fotball.no-data. En kamp regnes ikke som ferdig scoutet før tilgjengelig tropp og kamphendelser er kontrollert.</p>
+          <p id="scoutingOverviewMeta" class="report-meta"></p>
+        </div>
+        <button id="refreshScoutingOverview" type="button">Oppdater</button>
+      </div>
+      <div id="scoutingStats" class="scouting-stats"></div>
+      <div class="overview-label">Motstandere</div>
+      <div id="scoutingOpponentGrid" class="scouting-opponent-grid">
+        <div class="empty">Henter scoutingstatus …</div>
+      </div>
+    </section>
+
+    <section class="card" id="trackedReportsCard">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Kamprapporter</p>
+          <h2 id="trackedReportsHeading">Kamper for valgt motstander</h2>
+          <p class="muted report-intro">Tropp, startere/benk, mål, spillerbruk på høyere lag og det viktigste for Samnanger. Velg motstander over eller trykk på et lag i statusoversikten.</p>
+          <p id="trackedReportsMeta" class="report-meta"></p>
+        </div>
+        <button id="refreshTrackedReports" type="button">Oppdater</button>
+      </div>
+      <div id="trackedMatchReports" class="tracked-reports">
+        <div class="empty">Henter kamprapporter …</div>
       </div>
     </section>
 
@@ -90,7 +131,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" id="watchlistCard">
       <div class="section-head">
         <div>
           <p class="eyebrow">Watchlist</p>
@@ -99,21 +140,6 @@
         <button id="newPlayerBtn" type="button">+ Legg til spiller</button>
       </div>
       <div id="watchList" class="watch-list"></div>
-    </section>
-
-    <section class="card" id="trackedReportsCard">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Fulgte kamper</p>
-          <h2>Kamprapporter før vi møter dem</h2>
-          <p class="muted report-intro">Her samler vi offentlig kampdata fra kamper som er spesielt nyttige for scoutingen: tropp, oppstilling når tilgjengelig, mål, spillere som brukes på høyere lag og hva funnene betyr for Samnanger.</p>
-          <p id="trackedReportsMeta" class="report-meta"></p>
-        </div>
-        <button id="refreshTrackedReports" type="button">Oppdater</button>
-      </div>
-      <div id="trackedMatchReports" class="tracked-reports">
-        <div class="empty">Henter kamprapporter …</div>
-      </div>
     </section>
 
     <section id="playerFormCard" class="card hidden">
@@ -157,7 +183,7 @@
       <button id="savePlayerBtn" class="primary" type="button">Lagre spiller</button>
     </section>
 
-    <section class="card">
+    <section class="card" id="matchdayCard">
       <div class="section-head">
         <div>
           <p class="eyebrow">Kampdag</p>
@@ -171,8 +197,8 @@
     </section>
   </main>
 
-  <script type="module" src="motstandere-bootstrap.js?v=20260830-3"></script>
+  <script type="module" src="motstandere-bootstrap.js?v=20260913-1"></script>
   <script type="module" src="training-focus.js?v=20260830-1"></script>
-  <script type="module" src="scouting-reports.js?v=20260830-1"></script>
+  <script type="module" src="scouting-reports.js?v=20260913-1"></script>
 </body>
 </html>
