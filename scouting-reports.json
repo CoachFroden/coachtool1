@@ -1,11 +1,15 @@
 {
   "version": 1,
-  "updatedAt": "2026-09-13T15:38:00+02:00",
+  "updatedAt": "2026-09-13T17:05:00+02:00",
   "profiles": [
     {
       "key": "mathopen-vadmyra-2",
       "opponent": "Mathopen/Vadmyra 2",
-      "aliases": ["Mathopen/Vadmyra 2", "Mathopen Vadmyra 2", "Mathopen/Vadmyra"],
+      "aliases": [
+        "Mathopen/Vadmyra 2",
+        "Mathopen Vadmyra 2",
+        "Mathopen/Vadmyra"
+      ],
       "matches": [
         {
           "id": "nff-9185068",
@@ -20,28 +24,108 @@
           "status": "complete",
           "score": "0-6",
           "squad": [
-            { "name": "Leo Thormundsen", "role": "starter", "note": "nr. 1" },
-            { "name": "Kristoffer Eidem Rud", "role": "starter", "note": "nr. 4" },
-            { "name": "Andreas Undeland Solli", "role": "starter", "note": "nr. 6" },
-            { "name": "Simon Bidne Bøe", "role": "starter", "note": "nr. 18" },
-            { "name": "Magnus Kjelsvik Nymo", "role": "starter", "note": "nr. 21" },
-            { "name": "Milan Kawar Cornell-Jacobsen", "role": "starter", "note": "nr. 3" },
-            { "name": "Matheo Alsaker", "role": "starter", "note": "nr. 5" },
-            { "name": "Aidan Porcic", "role": "starter", "note": "nr. 8" },
-            { "name": "Vincent Zian Villalon Santella", "role": "starter", "note": "nr. 27" },
-            { "name": "Stian Lirhus-Johnsen", "role": "starter", "note": "nr. 31" },
-            { "name": "Orion Jakobsen Evjen", "role": "starter", "note": "nr. 11 · kaptein" },
-            { "name": "William Holthe Bøe", "role": "bench", "note": "nr. 2" },
-            { "name": "Herman Nordvik", "role": "bench", "note": "nr. 9" },
-            { "name": "Vilas Helskog Norevik", "role": "bench", "note": "nr. 16" }
+            {
+              "name": "Leo Thormundsen",
+              "role": "starter",
+              "note": "nr. 1"
+            },
+            {
+              "name": "Kristoffer Eidem Rud",
+              "role": "starter",
+              "note": "nr. 4"
+            },
+            {
+              "name": "Andreas Undeland Solli",
+              "role": "starter",
+              "note": "nr. 6"
+            },
+            {
+              "name": "Simon Bidne Bøe",
+              "role": "starter",
+              "note": "nr. 18"
+            },
+            {
+              "name": "Magnus Kjelsvik Nymo",
+              "role": "starter",
+              "note": "nr. 21"
+            },
+            {
+              "name": "Milan Kawar Cornell-Jacobsen",
+              "role": "starter",
+              "note": "nr. 3"
+            },
+            {
+              "name": "Matheo Alsaker",
+              "role": "starter",
+              "note": "nr. 5"
+            },
+            {
+              "name": "Aidan Porcic",
+              "role": "starter",
+              "note": "nr. 8"
+            },
+            {
+              "name": "Vincent Zian Villalon Santella",
+              "role": "starter",
+              "note": "nr. 27"
+            },
+            {
+              "name": "Stian Lirhus-Johnsen",
+              "role": "starter",
+              "note": "nr. 31"
+            },
+            {
+              "name": "Orion Jakobsen Evjen",
+              "role": "starter",
+              "note": "nr. 11 · kaptein"
+            },
+            {
+              "name": "William Holthe Bøe",
+              "role": "bench",
+              "note": "nr. 2"
+            },
+            {
+              "name": "Herman Nordvik",
+              "role": "bench",
+              "note": "nr. 9"
+            },
+            {
+              "name": "Vilas Helskog Norevik",
+              "role": "bench",
+              "note": "nr. 16"
+            }
           ],
           "goals": [
-            { "minute": "8", "player": "André Bertelsen", "team": "Austrheim" },
-            { "minute": "20", "player": "André Bertelsen", "team": "Austrheim" },
-            { "minute": "41", "player": "Jonas Ulvøy Kalgrøff", "team": "Austrheim" },
-            { "minute": "57", "player": "Max Sætre", "team": "Austrheim" },
-            { "minute": "66", "player": "Max Sætre", "team": "Austrheim" },
-            { "minute": "70", "player": "Max Sætre", "team": "Austrheim" }
+            {
+              "minute": "8",
+              "player": "André Bertelsen",
+              "team": "Austrheim"
+            },
+            {
+              "minute": "20",
+              "player": "André Bertelsen",
+              "team": "Austrheim"
+            },
+            {
+              "minute": "41",
+              "player": "Jonas Ulvøy Kalgrøff",
+              "team": "Austrheim"
+            },
+            {
+              "minute": "57",
+              "player": "Max Sætre",
+              "team": "Austrheim"
+            },
+            {
+              "minute": "66",
+              "player": "Max Sætre",
+              "team": "Austrheim"
+            },
+            {
+              "minute": "70",
+              "player": "Max Sætre",
+              "team": "Austrheim"
+            }
           ],
           "higherTeamPlayers": [
             {
@@ -113,7 +197,10 @@
     {
       "key": "austrheim",
       "opponent": "Austrheim",
-      "aliases": ["Austrheim", "Austrheim G14-1"],
+      "aliases": [
+        "Austrheim",
+        "Austrheim G14-1"
+      ],
       "matches": [
         {
           "id": "nff-12114306006",
@@ -125,13 +212,13 @@
           "venue": "Austrheim stadion",
           "teamScope": "G14-1",
           "purpose": "Svært relevant kontrollkamp fire dager før Samnanger møter Austrheim; kan vise siste tropp, måltrusler og eventuelle endringer.",
-          "status": "upcoming",
+          "status": "waiting",
           "score": "",
           "squad": [],
           "goals": [],
           "higherTeamPlayers": [],
           "takeaways": [],
-          "summary": "NFF hadde ennå ikke publisert sluttresultat da scoutingvakten sjekket kampen. Følges videre.",
+          "summary": "Kampen er passert. Den offentlige lagoversikten bekrefter oppgjøret, men den direkte, oppdaterte NFF-kamprapporten med sluttresultat, kamptropp og hendelser kunne ikke verifiseres i denne kjøringen. Rapporten holdes åpen og skal sjekkes på nytt.",
           "sourceUrls": [
             "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=180445",
             "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=121292"
@@ -142,7 +229,10 @@
     {
       "key": "austevoll-2",
       "opponent": "Austevoll 2",
-      "aliases": ["Austevoll 2", "Austevoll G14-2"],
+      "aliases": [
+        "Austevoll 2",
+        "Austevoll G14-2"
+      ],
       "matches": [
         {
           "id": "nff-12114306006",
@@ -154,13 +244,13 @@
           "venue": "Austrheim stadion",
           "teamScope": "G14-2",
           "purpose": "Svært relevant kontrollkamp seks dager før Samnanger møter Austevoll 2; kan vise siste tropp og eventuelle spillere som går mellom lag.",
-          "status": "upcoming",
+          "status": "waiting",
           "score": "",
           "squad": [],
           "goals": [],
           "higherTeamPlayers": [],
           "takeaways": [],
-          "summary": "NFF hadde ennå ikke publisert sluttresultat da scoutingvakten sjekket kampen. Følges videre.",
+          "summary": "Kampen er passert. Den offentlige lagoversikten bekrefter oppgjøret, men den direkte, oppdaterte NFF-kamprapporten med sluttresultat, kamptropp og hendelser kunne ikke verifiseres i denne kjøringen. Rapporten holdes åpen og skal sjekkes på nytt.",
           "sourceUrls": [
             "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=121292",
             "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=180445"
@@ -171,7 +261,11 @@
     {
       "key": "bones-2",
       "opponent": "Bønes 2",
-      "aliases": ["Bønes 2", "Bones 2", "Bønes G14-2"],
+      "aliases": [
+        "Bønes 2",
+        "Bones 2",
+        "Bønes G14-2"
+      ],
       "matches": [
         {
           "id": "nff-12114306012",
@@ -189,7 +283,7 @@
           "goals": [],
           "higherTeamPlayers": [],
           "takeaways": [],
-          "summary": "Sluttresultatet 2-1 er offentlig på NFF, men full kamprapport med tropp og hendelser er ikke verifisert i denne kjøringen. Rapporten holdes derfor åpen.",
+          "summary": "Sluttresultatet 2-1 er offentlig på NFF. Den direkte NFF-kamprapporten med komplett kamptropp/start-benker og hendelser kunne ikke hentes og verifiseres i denne kjøringen. Dette behandles som en innhentingsfeil, ikke som at oppstillingen mangler, og rapporten holdes åpen.",
           "sourceUrls": [
             "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=19387"
           ]
@@ -199,7 +293,11 @@
     {
       "key": "stanghelle-dale-vaksdal",
       "opponent": "Stanghelle/Dale/Vaksdal",
-      "aliases": ["Stanghelle/Dale/Vaksdal", "Stanghelle Dale Vaksdal", "Stanghelle G14-1"],
+      "aliases": [
+        "Stanghelle/Dale/Vaksdal",
+        "Stanghelle Dale Vaksdal",
+        "Stanghelle G14-1"
+      ],
       "matches": [
         {
           "id": "nff-12114306012",
@@ -217,7 +315,7 @@
           "goals": [],
           "higherTeamPlayers": [],
           "takeaways": [],
-          "summary": "Sluttresultatet 2-1 er offentlig på NFF, men full kamprapport med tropp og hendelser er ikke verifisert i denne kjøringen. Rapporten holdes derfor åpen.",
+          "summary": "Sluttresultatet 2-1 er offentlig på NFF. Den direkte NFF-kamprapporten med komplett kamptropp/start-benker og hendelser kunne ikke hentes og verifiseres i denne kjøringen. Dette behandles som en innhentingsfeil, ikke som at oppstillingen mangler, og rapporten holdes åpen.",
           "sourceUrls": [
             "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=19387",
             "https://www.fotball.no/fotballdata/lag/hjem/?fiksId=19797"
@@ -228,19 +326,29 @@
     {
       "key": "eikelandsfjorden",
       "opponent": "Eikelandsfjorden",
-      "aliases": ["Eikelandsfjorden", "Eikelandsfjorden G14-1"],
+      "aliases": [
+        "Eikelandsfjorden",
+        "Eikelandsfjorden G14-1"
+      ],
       "matches": []
     },
     {
       "key": "flaktveit-2",
       "opponent": "Flaktveit 2",
-      "aliases": ["Flaktveit 2", "Flaktveit G14-2"],
+      "aliases": [
+        "Flaktveit 2",
+        "Flaktveit G14-2"
+      ],
       "matches": []
     },
     {
       "key": "sandviken-varegg-3",
       "opponent": "Sandviken/Varegg 3",
-      "aliases": ["Sandviken/Varegg 3", "Sandviken Varegg 3", "Sandviken G14-3"],
+      "aliases": [
+        "Sandviken/Varegg 3",
+        "Sandviken Varegg 3",
+        "Sandviken G14-3"
+      ],
       "matches": []
     }
   ]
