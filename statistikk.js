@@ -21,7 +21,8 @@ const esc = value => String(value ?? "")
   .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 
 function getPlayer(map, id, name) {
-  const cleanName = String(name || "Ukjent").trim();
+  const cleanName = String(name || "").trim();
+  if (!cleanName) return null;
   if (norm(cleanName) === "torvald") return null;
   const idKey = id ? String(id) : "";
   if (idKey && map.has(idKey)) return map.get(idKey);
@@ -58,6 +59,7 @@ function buildStats(matches) {
 
     for (const event of match.events || []) {
       if (event?.team !== "home") continue;
+      if (event?.type !== "goal" && event?.type !== "card") continue;
       const row = getPlayer(players, event?.playerId, event?.playerName);
       if (!row) continue;
       if (event.type === "goal") row.goals++;
