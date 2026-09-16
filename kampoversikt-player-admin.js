@@ -8,6 +8,36 @@ import {
 
 let activeMatchId = null;
 
+const FIXED_PLAYERS = [
+  ["h1", "Ask"],
+  ["h2", "Brage"],
+  ["h3", "Gabriel"],
+  ["h4", "Lars"],
+  ["h5", "Liam"],
+  ["h6", "Lukas"],
+  ["h7", "Martin"],
+  ["h8", "Nicolai"],
+  ["h9", "Nytveit"],
+  ["h10", "Noah"],
+  ["h11", "Oliver"],
+  ["h12", "Snorre"],
+  ["h13", "Sondre"],
+  ["h14", "Sverre"],
+  ["h15", "Thage"],
+  ["h16", "Theodor"],
+  ["h17", "Torvald"]
+];
+
+const FIXED_BY_ID = new Map(FIXED_PLAYERS.map(([id, name]) => [id, { id, name }]));
+const FIXED_BY_FIRST = new Map(
+  FIXED_PLAYERS.flatMap(([id, name]) => {
+    const first = normalizeFirstName(name);
+    const rows = [[first, { id, name }]];
+    if (first === "nicolai") rows.push(["nico", { id, name }]);
+    return rows;
+  })
+);
+
 function installStyles() {
   if (document.getElementById("playedPlayerAdminStyles")) return;
   const style = document.createElement("style");
@@ -55,7 +85,34 @@ function esc(value) {
 }
 
 function norm(value) {
-  return String(value || "").trim().toLocaleLowerCase("no");
+  return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("no");
+}
+
+function normalizeFirstName(value) {
+  return norm(value).split(" ")[0] || "";
+}
+
+function fixedPlayer(id, name) {
+  const cleanId = String(id || "").trim();
+  if (FIXED_BY_ID.has(cleanId)) return FIXED_BY_ID.get(cleanId);
+  return FIXED_BY_FIRST.get(normalizeFirstName(name)) || null;
+}
+
+function playerIdentity(id, name) {
+  const fixed = fixedPlayer(id, name);
+  if (fixed) return `fixed:${fixed.id}`;
+  const cleanName = norm(name);
+  if (cleanName) return `name:${cleanName}`;
+  return `id:${String(id || "unknown")}`;
+}
+
+function canonicalPlayerData(id, name) {
+  const fixed = fixedPlayer(id, name);
+  if (fixed) return fixed;
+  return {
+    id: String(id || `name:${norm(name)}`),
+    name: String(name || "Ukjent spiller").trim()
+  };
 }
 
 function ensureDialog() {
@@ -75,12 +132,10 @@ function ensureDialog() {
         </div>
         <button id="playedPlayerAdminClose" class="playerAdminClose" type="button" aria-label="Lukk">×</button>
       </div>
-
       <p class="playerAdminHelp">
         Rett hvem som faktisk var med, hvem som startet og hvor mange minutter hver spiller spilte.
-        Dette er dataene statistikken bruker til antall kamper og spilletid. Bytter redigeres under Hendelser.
+        Listen slår automatisk sammen eldre dubletter av samme spiller. Bytter redigeres under Hendelser.
       </p>
-
       <div class="playerAdminColumns" aria-hidden="true">
         <span>Spiller</span><span>Med</span><span>Start</span><span>Min</span>
       </div>
@@ -108,23 +163,35 @@ function collectPlayers(match) {
   const add = (id, name, source = {}) => {
     const cleanName = String(name || "").trim();
     if (!cleanName) return;
-    const key = String(id || `name:${norm(cleanName)}`);
-    const existing = [...map.values()].find(item => item.id === key || norm(item.name) === norm(cleanName));
-    if (existing) {
-      existing.present = source.present ?? existing.present;
-      existing.starter = source.starter ?? existing.starter;
-      if (Number.isFinite(Number(source.minutes))) existing.minutes = Number(source.minutes);
-      if (Array.isArray(source.cards)) existing.cards = source.cards;
-      return;
+
+    const identity = playerIdentity(id, cleanName);
+    const canonical = canonicalPlayerData(id, cleanName);
+    let row = map.get(identity);
+
+    if (!row) {
+      row = {
+        identity,
+        id: canonical.id,
+        name: canonical.name,
+        present: false,
+        starter: false,
+        minutes: 0,
+        cards: []
+      };
+      map.set(identity, row);
     }
-    map.set(key, {
-      id: key,
-      name: cleanName,
-      present: source.present === true,
-      starter: source.starter === true,
-      minutes: Number.isFinite(Number(source.minutes)) ? Number(source.minutes) : 0,
-      cards: Array.isArray(source.cards) ? source.cards : []
-    });
+
+    if (source.present === true) row.present = true;
+    if (source.starter === true) {
+      row.starter = true;
+      row.present = true;
+    }
+    if (Object.prototype.hasOwnProperty.call(source, "minutes") && Number.isFinite(Number(source.minutes))) {
+      row.minutes = Math.max(row.minutes, Number(source.minutes));
+    }
+    if (Array.isArray(source.cards) && source.cards.length >= row.cards.length) {
+      row.cards = source.cards;
+    }
   };
 
   if (match?.players && typeof match.players === "object" && !Array.isArray(match.players)) {
@@ -143,8 +210,7 @@ function collectPlayers(match) {
   }
 
   for (const player of match?.lineup || []) {
-    const existing = [...map.values()].find(item => norm(item.name) === norm(player?.name));
-    add(player?.id || existing?.id, player?.name, { present: true, starter: true });
+    add(player?.id, player?.name, { present: true, starter: true });
   }
 
   if (Array.isArray(match?.squad?.present)) {
@@ -181,7 +247,10 @@ async function openPlayerAdmin(matchId) {
   const maxMinutes = Math.max(matchLengthMinutes(match), ...players.map(p => Number(p.minutes) || 0));
   const list = document.getElementById("playedPlayerAdminList");
   list.innerHTML = players.map(player => `
-    <div class="playerAdminRow${player.present ? "" : " notPresent"}" data-player-id="${esc(player.id)}" data-player-name="${esc(player.name)}">
+    <div class="playerAdminRow${player.present ? "" : " notPresent"}"
+      data-player-id="${esc(player.id)}"
+      data-player-name="${esc(player.name)}"
+      data-player-identity="${esc(player.identity)}">
       <span class="playerAdminName">${esc(player.name)}</span>
       <label class="playerAdminCheck" title="Var med i kampen"><input type="checkbox" data-field="present" ${player.present ? "checked" : ""}></label>
       <label class="playerAdminCheck" title="Startet kampen"><input type="checkbox" data-field="starter" ${player.starter ? "checked" : ""} ${player.present ? "" : "disabled"}></label>
@@ -206,10 +275,40 @@ async function openPlayerAdmin(matchId) {
   dialog.showModal();
 }
 
-function findStoredPlayerKey(players, id, name) {
-  if (!players || typeof players !== "object") return null;
-  if (id && players[id]) return id;
-  return Object.keys(players).find(key => norm(players[key]?.name) === norm(name)) || null;
+function rawPlayerSource(match) {
+  if (match?.players?.home && typeof match.players.home === "object") return match.players.home;
+  if (match?.players && typeof match.players === "object" && !Array.isArray(match.players)) return match.players;
+  return {};
+}
+
+function rawCandidatesForIdentity(rawPlayers, identity) {
+  return Object.entries(rawPlayers)
+    .filter(([key, player]) => playerIdentity(player?.id || key, player?.name) === identity)
+    .map(([key, player]) => ({ key, player: player || {} }));
+}
+
+function mergeCards(candidates, fallbackCards = []) {
+  const result = [];
+  const seen = new Set();
+  for (const card of [...candidates.flatMap(item => item.player?.cards || []), ...fallbackCards]) {
+    const key = String(card?.id || `${card?.type || ""}:${card?.timeMs || ""}`);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(card);
+  }
+  return result;
+}
+
+function richestCandidate(candidates) {
+  return candidates
+    .slice()
+    .sort((a, b) => {
+      const aIntervals = Array.isArray(a.player?.intervals) ? a.player.intervals.length : 0;
+      const bIntervals = Array.isArray(b.player?.intervals) ? b.player.intervals.length : 0;
+      const aCards = Array.isArray(a.player?.cards) ? a.player.cards.length : 0;
+      const bCards = Array.isArray(b.player?.cards) ? b.player.cards.length : 0;
+      return (bIntervals + bCards) - (aIntervals + aCards);
+    })[0] || null;
 }
 
 async function saveCorrections(event) {
@@ -231,18 +330,18 @@ async function saveCorrections(event) {
       throw new Error("Bare ferdigspilte kamper kan korrigeres her.");
     }
 
-    const rawPlayers = match?.players?.home && typeof match.players.home === "object"
-      ? { ...match.players.home }
-      : { ...(match.players || {}) };
+    const oldRawPlayers = rawPlayerSource(match);
+    const cleanRawPlayers = {};
     const rows = [...document.querySelectorAll("#playedPlayerAdminList .playerAdminRow")];
     const playingTime = [];
     const squadPresent = [];
     const squadStarters = [];
-
     let starterCount = 0;
+
     for (const row of rows) {
       const id = row.dataset.playerId;
       const name = row.dataset.playerName;
+      const identity = row.dataset.playerIdentity || playerIdentity(id, name);
       const present = row.querySelector('[data-field="present"]').checked;
       const starter = present && row.querySelector('[data-field="starter"]').checked;
       const minutes = present ? Number(row.querySelector('[data-field="minutes"]').value) : 0;
@@ -252,45 +351,57 @@ async function saveCorrections(event) {
       }
       if (starter) starterCount++;
 
-      const storedKey = findStoredPlayerKey(rawPlayers, id, name) || id;
-      const existing = rawPlayers[storedKey] || { id: storedKey, name, intervals: [], cards: [] };
-      rawPlayers[storedKey] = {
-        ...existing,
-        id: existing.id || storedKey,
-        name: existing.name || name,
+      const canonical = canonicalPlayerData(id, name);
+      const candidates = rawCandidatesForIdentity(oldRawPlayers, identity);
+      const richest = richestCandidate(candidates);
+      const playingTimeMatch = (match.playingTime || []).find(item =>
+        playerIdentity(item?.id, item?.name) === identity
+      );
+      const cards = mergeCards(candidates, playingTimeMatch?.cards || []);
+      const base = richest?.player || {};
+      const storedKey = fixedPlayer(canonical.id, canonical.name)?.id || richest?.key || canonical.id;
+
+      cleanRawPlayers[storedKey] = {
+        ...base,
+        id: canonical.id || base.id || storedKey,
+        name: canonical.name || base.name || name,
         present,
-        starter
+        starter,
+        intervals: Array.isArray(base.intervals) ? base.intervals : [],
+        cards
       };
 
       if (present) {
-        const playerId = existing.id || storedKey;
-        const cards = Array.isArray(existing.cards)
-          ? existing.cards
-          : (match.playingTime || []).find(item => norm(item?.name) === norm(name))?.cards || [];
-        playingTime.push({ id: playerId, name, minutes: Math.round(minutes), cards });
-        squadPresent.push({ id: playerId, name });
-        if (starter) squadStarters.push({ id: playerId, name });
+        const playerId = canonical.id || storedKey;
+        playingTime.push({ id: playerId, name: canonical.name, minutes: Math.round(minutes), cards });
+        squadPresent.push({ id: playerId, name: canonical.name });
+        if (starter) squadStarters.push({ id: playerId, name: canonical.name });
       }
     }
 
     if (starterCount > 11) throw new Error("Det kan ikke være mer enn 11 startere.");
 
-    const storedLineup = Array.isArray(match.lineup) ? match.lineup : [];
-    const starterNames = new Set(squadStarters.map(player => norm(player.name)));
-    const lineup = storedLineup
-      .filter(player => starterNames.has(norm(player?.name)))
-      .map(player => ({ ...player }));
-
-    // Hvis en korrigert starter ikke finnes i den gamle lagoppstillingen,
-    // behold spilleren likevel i lineup-dataene med en nøytral posisjon.
-    for (const starter of squadStarters) {
-      if (lineup.some(player => norm(player?.name) === norm(starter.name))) continue;
-      lineup.push({ id: starter.id, name: starter.name, x: 50, y: 50 });
+    const starterIdentity = new Set(
+      squadStarters.map(player => playerIdentity(player.id, player.name))
+    );
+    const lineupByIdentity = new Map();
+    for (const player of Array.isArray(match.lineup) ? match.lineup : []) {
+      const identity = playerIdentity(player?.id, player?.name);
+      if (!starterIdentity.has(identity) || lineupByIdentity.has(identity)) continue;
+      const canonical = canonicalPlayerData(player?.id, player?.name);
+      lineupByIdentity.set(identity, { ...player, id: canonical.id, name: canonical.name });
     }
+    for (const starter of squadStarters) {
+      const identity = playerIdentity(starter.id, starter.name);
+      if (!lineupByIdentity.has(identity)) {
+        lineupByIdentity.set(identity, { id: starter.id, name: starter.name, x: 50, y: 50 });
+      }
+    }
+    const lineup = [...lineupByIdentity.values()];
 
     const playersUpdate = match?.players?.home
-      ? { ...match.players, home: rawPlayers }
-      : rawPlayers;
+      ? { ...match.players, home: cleanRawPlayers }
+      : cleanRawPlayers;
 
     await updateDoc(ref, {
       players: playersUpdate,
@@ -304,7 +415,8 @@ async function saveCorrections(event) {
       lineupConfirmed: starterCount === 11,
       postMatchPlayerCorrection: {
         correctedAt: new Date().toISOString(),
-        correctedPlayers: playingTime.length
+        correctedPlayers: playingTime.length,
+        duplicatesCleaned: true
       },
       updatedAt: serverTimestamp()
     });
