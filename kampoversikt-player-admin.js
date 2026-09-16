@@ -1,0 +1,356 @@
+import { db } from "./firebase-refleksjon.js";
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+let activeMatchId = null;
+
+function installStyles() {
+  if (document.getElementById("playedPlayerAdminStyles")) return;
+  const style = document.createElement("style");
+  style.id = "playedPlayerAdminStyles";
+  style.textContent = `
+    .playerTimeBtn{grid-column:1/-1;min-height:42px;border:1px solid rgba(167,139,250,.28);border-radius:12px;background:rgba(124,58,237,.08);color:#ddd6fe;font:inherit;font-size:11px;font-weight:800;cursor:pointer}
+    .playerTimeBtn:active{transform:translateY(1px)}
+    .playerAdminDialog{width:min(94vw,560px);max-height:90vh;padding:0;border:1px solid rgba(148,163,184,.2);border-radius:20px;background:#0b1727;color:#f8fafc;box-shadow:0 28px 80px rgba(0,0,0,.55)}
+    .playerAdminDialog::backdrop{background:rgba(0,6,14,.76);backdrop-filter:blur(4px)}
+    .playerAdminForm{display:grid;gap:14px;padding:20px}
+    .playerAdminHeader{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+    .playerAdminHeader h2{margin:3px 0 5px;font-size:22px;letter-spacing:-.035em}
+    .playerAdminHeader p{margin:0;color:#8094ad;font-size:11px}
+    .playerAdminKicker{display:block;color:#c4b5fd;font-size:9px;font-weight:900;letter-spacing:.15em}
+    .playerAdminClose{width:38px;height:38px;flex:0 0 38px;border:1px solid rgba(148,163,184,.15);border-radius:11px;background:rgba(255,255,255,.035);color:#aebed0;font-size:22px}
+    .playerAdminHelp{margin:0;padding:10px 12px;border:1px solid rgba(125,211,252,.12);border-radius:12px;background:rgba(14,116,144,.05);color:#8fa4bd;font-size:10px;line-height:1.5}
+    .playerAdminColumns{display:grid;grid-template-columns:minmax(0,1fr) 54px 58px 80px;gap:8px;align-items:center;padding:0 8px;color:#667b94;font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.06em}
+    .playerAdminList{display:grid;gap:6px;max-height:52vh;overflow:auto;padding-right:2px}
+    .playerAdminRow{display:grid;grid-template-columns:minmax(0,1fr) 54px 58px 80px;gap:8px;align-items:center;padding:9px 8px;border:1px solid rgba(148,163,184,.1);border-radius:12px;background:rgba(255,255,255,.022)}
+    .playerAdminRow.notPresent{opacity:.52}
+    .playerAdminName{min-width:0;font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .playerAdminCheck{display:grid;place-items:center}
+    .playerAdminCheck input{width:18px;height:18px;accent-color:#3b82f6}
+    .playerAdminMinutes{width:100%;min-height:36px;border:1px solid rgba(148,163,184,.18);border-radius:9px;background:#07111d;color:#f8fafc;padding:7px 8px;font:inherit;font-size:12px;text-align:center;outline:none}
+    .playerAdminMinutes:focus{border-color:rgba(59,130,246,.7);box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+    .playerAdminMinutes:disabled{opacity:.45}
+    .playerAdminFooter{display:grid;grid-template-columns:1fr 1.3fr;gap:8px}
+    .playerAdminFooter button{min-height:45px;border-radius:12px;font:inherit;font-size:12px;font-weight:850;cursor:pointer}
+    .playerAdminCancel{border:1px solid rgba(148,163,184,.15);background:rgba(255,255,255,.035);color:#b8c6d7}
+    .playerAdminSave{border:1px solid rgba(59,130,246,.5);background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff}
+    .playerAdminSave:disabled{opacity:.55;cursor:wait}
+    .playerAdminError{min-height:16px;margin:0;color:#fb7185;font-size:10px}
+    @media(max-width:420px){.playerAdminForm{padding:16px}.playerAdminColumns,.playerAdminRow{grid-template-columns:minmax(0,1fr) 48px 50px 66px;gap:5px}.playerAdminColumns{font-size:8px}.playerAdminName{font-size:11px}.playerAdminFooter{grid-template-columns:1fr}}
+  `;
+  document.head.appendChild(style);
+}
+
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function norm(value) {
+  return String(value || "").trim().toLocaleLowerCase("no");
+}
+
+function ensureDialog() {
+  let dialog = document.getElementById("playedPlayerAdminDialog");
+  if (dialog) return dialog;
+
+  dialog = document.createElement("dialog");
+  dialog.id = "playedPlayerAdminDialog";
+  dialog.className = "playerAdminDialog";
+  dialog.innerHTML = `
+    <form id="playedPlayerAdminForm" class="playerAdminForm" method="dialog">
+      <div class="playerAdminHeader">
+        <div>
+          <span class="playerAdminKicker">ETTERKORRIGERING</span>
+          <h2>Spillere og spilletid</h2>
+          <p id="playedPlayerAdminFixture"></p>
+        </div>
+        <button id="playedPlayerAdminClose" class="playerAdminClose" type="button" aria-label="Lukk">×</button>
+      </div>
+
+      <p class="playerAdminHelp">
+        Rett hvem som faktisk var med, hvem som startet og hvor mange minutter hver spiller spilte.
+        Dette er dataene statistikken bruker til antall kamper og spilletid. Bytter redigeres under Hendelser.
+      </p>
+
+      <div class="playerAdminColumns" aria-hidden="true">
+        <span>Spiller</span><span>Med</span><span>Start</span><span>Min</span>
+      </div>
+      <div id="playedPlayerAdminList" class="playerAdminList"></div>
+      <p id="playedPlayerAdminError" class="playerAdminError"></p>
+      <div class="playerAdminFooter">
+        <button id="playedPlayerAdminCancel" class="playerAdminCancel" type="button">Avbryt</button>
+        <button id="playedPlayerAdminSave" class="playerAdminSave" type="submit">Lagre korrigering</button>
+      </div>
+    </form>`;
+
+  document.body.appendChild(dialog);
+  document.getElementById("playedPlayerAdminClose").onclick = () => dialog.close();
+  document.getElementById("playedPlayerAdminCancel").onclick = () => dialog.close();
+  document.getElementById("playedPlayerAdminForm").addEventListener("submit", saveCorrections);
+  dialog.addEventListener("click", event => {
+    if (event.target === dialog) dialog.close();
+  });
+  return dialog;
+}
+
+function collectPlayers(match) {
+  const map = new Map();
+
+  const add = (id, name, source = {}) => {
+    const cleanName = String(name || "").trim();
+    if (!cleanName) return;
+    const key = String(id || `name:${norm(cleanName)}`);
+    const existing = [...map.values()].find(item => item.id === key || norm(item.name) === norm(cleanName));
+    if (existing) {
+      existing.present = source.present ?? existing.present;
+      existing.starter = source.starter ?? existing.starter;
+      if (Number.isFinite(Number(source.minutes))) existing.minutes = Number(source.minutes);
+      if (Array.isArray(source.cards)) existing.cards = source.cards;
+      return;
+    }
+    map.set(key, {
+      id: key,
+      name: cleanName,
+      present: source.present === true,
+      starter: source.starter === true,
+      minutes: Number.isFinite(Number(source.minutes)) ? Number(source.minutes) : 0,
+      cards: Array.isArray(source.cards) ? source.cards : []
+    });
+  };
+
+  if (match?.players && typeof match.players === "object" && !Array.isArray(match.players)) {
+    const source = match.players.home && typeof match.players.home === "object"
+      ? match.players.home
+      : match.players;
+    Object.entries(source).forEach(([id, player]) => add(player?.id || id, player?.name, player || {}));
+  }
+
+  for (const player of match?.playingTime || []) {
+    add(player?.id, player?.name, {
+      present: true,
+      minutes: Number(player?.minutes) || 0,
+      cards: player?.cards || []
+    });
+  }
+
+  for (const player of match?.lineup || []) {
+    const existing = [...map.values()].find(item => norm(item.name) === norm(player?.name));
+    add(player?.id || existing?.id, player?.name, { present: true, starter: true });
+  }
+
+  if (Array.isArray(match?.squad?.present)) {
+    for (const player of match.squad.present) add(player?.id, player?.name, { present: true });
+  }
+  if (Array.isArray(match?.squad?.starters)) {
+    for (const player of match.squad.starters) add(player?.id, player?.name, { present: true, starter: true });
+  }
+
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "no"));
+}
+
+function matchLengthMinutes(match) {
+  const timerMinutes = Math.round((Number(match?.timer?.elapsedMs) || 0) / 60000);
+  if (timerMinutes > 0) return timerMinutes;
+  const half = Number(match?.meta?.halfLengthMin) || 35;
+  return half * 2;
+}
+
+async function openPlayerAdmin(matchId) {
+  activeMatchId = matchId;
+  const snap = await getDoc(doc(db, "matches", matchId));
+  if (!snap.exists()) return;
+  const match = { id: snap.id, ...snap.data() };
+  if (String(match.status || "").toUpperCase() !== "ENDED") return;
+
+  const dialog = ensureDialog();
+  const meta = match.meta || {};
+  document.getElementById("playedPlayerAdminFixture").textContent =
+    `${meta.ourTeam || "Samnanger"} – ${meta.opponent || "Motstander"}`;
+  document.getElementById("playedPlayerAdminError").textContent = "";
+
+  const players = collectPlayers(match);
+  const maxMinutes = Math.max(matchLengthMinutes(match), ...players.map(p => Number(p.minutes) || 0));
+  const list = document.getElementById("playedPlayerAdminList");
+  list.innerHTML = players.map(player => `
+    <div class="playerAdminRow${player.present ? "" : " notPresent"}" data-player-id="${esc(player.id)}" data-player-name="${esc(player.name)}">
+      <span class="playerAdminName">${esc(player.name)}</span>
+      <label class="playerAdminCheck" title="Var med i kampen"><input type="checkbox" data-field="present" ${player.present ? "checked" : ""}></label>
+      <label class="playerAdminCheck" title="Startet kampen"><input type="checkbox" data-field="starter" ${player.starter ? "checked" : ""} ${player.present ? "" : "disabled"}></label>
+      <input class="playerAdminMinutes" data-field="minutes" type="number" inputmode="numeric" min="0" max="${Math.max(200, maxMinutes + 30)}" step="1" value="${Math.max(0, Math.round(Number(player.minutes) || 0))}" ${player.present ? "" : "disabled"} aria-label="Minutter for ${esc(player.name)}">
+    </div>`).join("");
+
+  list.querySelectorAll('[data-field="present"]').forEach(input => {
+    input.addEventListener("change", () => {
+      const row = input.closest(".playerAdminRow");
+      const starter = row.querySelector('[data-field="starter"]');
+      const minutes = row.querySelector('[data-field="minutes"]');
+      row.classList.toggle("notPresent", !input.checked);
+      starter.disabled = !input.checked;
+      minutes.disabled = !input.checked;
+      if (!input.checked) {
+        starter.checked = false;
+        minutes.value = "0";
+      }
+    });
+  });
+
+  dialog.showModal();
+}
+
+function findStoredPlayerKey(players, id, name) {
+  if (!players || typeof players !== "object") return null;
+  if (id && players[id]) return id;
+  return Object.keys(players).find(key => norm(players[key]?.name) === norm(name)) || null;
+}
+
+async function saveCorrections(event) {
+  event.preventDefault();
+  const errorEl = document.getElementById("playedPlayerAdminError");
+  const saveBtn = document.getElementById("playedPlayerAdminSave");
+  errorEl.textContent = "";
+  if (!activeMatchId) return;
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Lagrer…";
+
+  try {
+    const ref = doc(db, "matches", activeMatchId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) throw new Error("Kampen finnes ikke lenger.");
+    const match = { id: snap.id, ...snap.data() };
+    if (String(match.status || "").toUpperCase() !== "ENDED") {
+      throw new Error("Bare ferdigspilte kamper kan korrigeres her.");
+    }
+
+    const rawPlayers = match?.players?.home && typeof match.players.home === "object"
+      ? { ...match.players.home }
+      : { ...(match.players || {}) };
+    const rows = [...document.querySelectorAll("#playedPlayerAdminList .playerAdminRow")];
+    const playingTime = [];
+    const squadPresent = [];
+    const squadStarters = [];
+
+    let starterCount = 0;
+    for (const row of rows) {
+      const id = row.dataset.playerId;
+      const name = row.dataset.playerName;
+      const present = row.querySelector('[data-field="present"]').checked;
+      const starter = present && row.querySelector('[data-field="starter"]').checked;
+      const minutes = present ? Number(row.querySelector('[data-field="minutes"]').value) : 0;
+
+      if (!Number.isFinite(minutes) || minutes < 0) {
+        throw new Error(`Ugyldig spilletid for ${name}.`);
+      }
+      if (starter) starterCount++;
+
+      const storedKey = findStoredPlayerKey(rawPlayers, id, name) || id;
+      const existing = rawPlayers[storedKey] || { id: storedKey, name, intervals: [], cards: [] };
+      rawPlayers[storedKey] = {
+        ...existing,
+        id: existing.id || storedKey,
+        name: existing.name || name,
+        present,
+        starter
+      };
+
+      if (present) {
+        const playerId = existing.id || storedKey;
+        const cards = Array.isArray(existing.cards)
+          ? existing.cards
+          : (match.playingTime || []).find(item => norm(item?.name) === norm(name))?.cards || [];
+        playingTime.push({ id: playerId, name, minutes: Math.round(minutes), cards });
+        squadPresent.push({ id: playerId, name });
+        if (starter) squadStarters.push({ id: playerId, name });
+      }
+    }
+
+    if (starterCount > 11) throw new Error("Det kan ikke være mer enn 11 startere.");
+
+    const storedLineup = Array.isArray(match.lineup) ? match.lineup : [];
+    const starterNames = new Set(squadStarters.map(player => norm(player.name)));
+    const lineup = storedLineup
+      .filter(player => starterNames.has(norm(player?.name)))
+      .map(player => ({ ...player }));
+
+    // Hvis en korrigert starter ikke finnes i den gamle lagoppstillingen,
+    // behold spilleren likevel i lineup-dataene med en nøytral posisjon.
+    for (const starter of squadStarters) {
+      if (lineup.some(player => norm(player?.name) === norm(starter.name))) continue;
+      lineup.push({ id: starter.id, name: starter.name, x: 50, y: 50 });
+    }
+
+    const playersUpdate = match?.players?.home
+      ? { ...match.players, home: rawPlayers }
+      : rawPlayers;
+
+    await updateDoc(ref, {
+      players: playersUpdate,
+      playingTime,
+      squad: {
+        ...(match.squad || {}),
+        present: squadPresent,
+        starters: squadStarters
+      },
+      lineup,
+      lineupConfirmed: starterCount === 11,
+      postMatchPlayerCorrection: {
+        correctedAt: new Date().toISOString(),
+        correctedPlayers: playingTime.length
+      },
+      updatedAt: serverTimestamp()
+    });
+
+    dialogCloseAndReload(activeMatchId);
+  } catch (error) {
+    console.error(error);
+    errorEl.textContent = error.message || "Kunne ikke lagre korrigeringen.";
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Lagre korrigering";
+  }
+}
+
+function dialogCloseAndReload(matchId) {
+  document.getElementById("playedPlayerAdminDialog")?.close();
+  const url = new URL(window.location.href);
+  url.searchParams.set("view", "played");
+  url.searchParams.set("matchId", matchId);
+  window.location.href = url.toString();
+}
+
+function enhancePlayedCards() {
+  document.querySelectorAll(".matchCard[id^='match-']").forEach(card => {
+    const matchId = card.id.slice("match-".length);
+    const actions = card.querySelector(".postMatchActions");
+    if (!actions || actions.querySelector("[data-player-time]")) return;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "playerTimeBtn";
+    button.dataset.playerTime = matchId;
+    button.textContent = "👥 Spillere / spilletid";
+    actions.appendChild(button);
+  });
+}
+
+const observer = new MutationObserver(enhancePlayedCards);
+observer.observe(document.getElementById("content"), { childList: true, subtree: true });
+
+document.addEventListener("click", async event => {
+  const button = event.target.closest("[data-player-time]");
+  if (!button) return;
+  event.preventDefault();
+  await openPlayerAdmin(button.dataset.playerTime);
+});
+
+installStyles();
+enhancePlayedCards();
