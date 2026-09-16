@@ -5,11 +5,35 @@ import {
   getDoc,
   getDocs,
   query,
+  updateDoc,
   where
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 function canonicalTime(meta = {}) {
   return String(meta.startTime || meta.time || "").trim();
+}
+
+async function synchronizeStoredTimes() {
+  const snap = await getDocs(collection(db, "matches"));
+  const writes = [];
+
+  snap.forEach(docSnap => {
+    const meta = docSnap.data()?.meta || {};
+    const startTime = String(meta.startTime || "").trim();
+    const legacyTime = String(meta.time || "").trim();
+
+    // startTime er fasiten. Hold det eldre time-feltet synkronisert slik at
+    // eldre visninger ikke kan vise et annet klokkeslett.
+    if (startTime && startTime !== legacyTime) {
+      writes.push(updateDoc(doc(db, "matches", docSnap.id), {
+        "meta.time": startTime
+      }));
+    }
+  });
+
+  if (!writes.length) return false;
+  await Promise.all(writes);
+  return true;
 }
 
 function setDisplayedTime(element, time) {
@@ -72,6 +96,17 @@ async function correctModal(prefix) {
 
   const time = canonicalTime(match.meta || {});
   if (time) setDisplayedTime(dateEl, time);
+}
+
+try {
+  const changed = await synchronizeStoredTimes();
+  if (changed) {
+    // Last siden på nytt én gang slik at alle eldre komponenter leser den
+    // normaliserte verdien fra Firestore.
+    window.location.reload();
+  }
+} catch (error) {
+  console.warn("Kunne ikke normalisere kampstarttidene:", error);
 }
 
 for (const prefix of ["pitch", "info"]) {
