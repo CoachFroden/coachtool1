@@ -1,8 +1,34 @@
 // Én ren beregningsmotor for spilletid i ferdigspilte kamper.
 // Ingen Firestore, ingen reloads, ingen sideeffekter.
+//
+// Identitetsregel:
+// - Tropp/startellever: fast spiller-ID er fasit.
+// - Historiske hendelser/bytter: synlig spillernavn er fasit når navn finnes.
 
-export const PLAYING_TIME_SCHEMA_VERSION = 12;
-export const MANUAL_OVERRIDE_VERSION = 3;
+export const PLAYING_TIME_SCHEMA_VERSION = 13;
+export const MANUAL_OVERRIDE_VERSION = 4;
+
+const FIXED_PLAYERS = [
+  ["h1", "Ask"],
+  ["h2", "Brage"],
+  ["h3", "Gabriel"],
+  ["h4", "Lars"],
+  ["h5", "Liam"],
+  ["h6", "Lukas"],
+  ["h7", "Martin"],
+  ["h8", "Nicolai"],
+  ["h9", "Nytveit"],
+  ["h10", "Noah"],
+  ["h11", "Oliver"],
+  ["h12", "Snorre"],
+  ["h13", "Sondre"],
+  ["h14", "Sverre"],
+  ["h15", "Thage"],
+  ["h16", "Theodor"],
+  ["h17", "Torvald"]
+];
+
+const FIXED_BY_ID = new Map(FIXED_PLAYERS);
 
 function norm(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("no");
@@ -14,9 +40,28 @@ function canonicalFirstName(value) {
   return first;
 }
 
-export function playerKey(id, name) {
+function nameKey(name) {
   const first = canonicalFirstName(name);
-  return first ? `name:${first}` : `id:${String(id || "unknown")}`;
+  return first ? `name:${first}` : "";
+}
+
+function rosterName(id, name) {
+  const cleanId = String(id || "").trim();
+  if (FIXED_BY_ID.has(cleanId)) return FIXED_BY_ID.get(cleanId);
+  return String(name || "").trim();
+}
+
+function eventName(id, name) {
+  const cleanName = String(name || "").trim();
+  if (cleanName) return cleanName;
+  const cleanId = String(id || "").trim();
+  if (FIXED_BY_ID.has(cleanId)) return FIXED_BY_ID.get(cleanId);
+  return cleanId;
+}
+
+export function playerKey(id, name) {
+  const canonicalName = rosterName(id, name);
+  return nameKey(canonicalName) || `id:${String(id || "unknown")}`;
 }
 
 export function parseMatchMinute(value) {
@@ -54,20 +99,18 @@ function playerSource(match) {
 
 function buildRegistry(match) {
   const registry = new Map();
-  const idToKey = new Map();
+  const rosterIdToKey = new Map();
 
-  function add(id, name, source = {}, priority = 0) {
+  function upsert(key, id, name, source = {}, priority = 0) {
+    if (!key) return null;
     const cleanName = String(name || "").trim();
-    if (!cleanName && !id) return null;
-
-    const key = playerKey(id, cleanName);
     const existing = registry.get(key);
 
     if (!existing) {
       registry.set(key, {
         key,
         id: String(id || key),
-        name: cleanName || String(id),
+        name: cleanName || String(id || key),
         priority,
         cards: Array.isArray(source?.cards) ? source.cards : []
       });
@@ -81,53 +124,85 @@ function buildRegistry(match) {
         existing.cards = source.cards;
       }
     }
+    return key;
+  }
 
-    if (id) idToKey.set(String(id), key);
+  function addRoster(id, name, source = {}, priority = 0) {
+    const canonicalName = rosterName(id, name);
+    if (!canonicalName && !id) return null;
+    const key = nameKey(canonicalName) || `id:${String(id)}`;
+    upsert(key, id, canonicalName, source, priority);
+    if (id) rosterIdToKey.set(String(id), key);
+    return key;
+  }
+
+  function addEvent(id, name, source = {}, priority = 0) {
+    const canonicalName = eventName(id, name);
+    if (!canonicalName && !id) return null;
+    const key = nameKey(canonicalName) || `id:${String(id)}`;
+    upsert(key, id, canonicalName, source, priority);
     return key;
   }
 
   const stored = playerSource(match);
   Object.entries(stored).forEach(([id, player]) => {
-    add(player?.id || id, player?.name, player || {}, 100);
+    addRoster(player?.id || id, player?.name, player || {}, 100);
   });
 
-  for (const player of match?.squad?.present || []) add(player?.id, player?.name, player, 90);
-  for (const player of match?.squad?.starters || []) add(player?.id, player?.name, player, 95);
-  for (const player of match?.lineup || []) add(player?.id, player?.name, player, 60);
-  for (const player of match?.playingTime || []) add(player?.id, player?.name, player, 70);
+  for (const player of match?.squad?.present || []) addRoster(player?.id, player?.name, player, 95);
+  for (const player of match?.squad?.starters || []) addRoster(player?.id, player?.name, player, 98);
+  for (const player of match?.lineup || []) addRoster(player?.id, player?.name, player, 70);
+  for (const player of match?.playingTime || []) addRoster(player?.id, player?.name, player, 75);
 
   for (const event of match?.events || []) {
     if (event?.type === "substitution" || event?.type === "sub") {
-      add(event?.outPlayerId, event?.outPlayerName, {}, 50);
-      add(event?.inPlayerId, event?.inPlayerName, {}, 50);
+      addEvent(event?.outPlayerId, event?.outPlayerName, {}, 50);
+      addEvent(event?.inPlayerId, event?.inPlayerName, {}, 50);
     } else if (event?.type === "card" && event?.team === "home") {
-      add(event?.playerId, event?.playerName, {}, 50);
+      addEvent(event?.playerId, event?.playerName, {}, 50);
     }
   }
 
-  function resolve(id, name) {
-    // For korrigerte/historiske kamper er hendelsesnavnet mer pålitelig enn
-    // gamle spiller-ID-er. En feil i opprinnelig lagoppstilling kan ha gjort at
-    // et bytte peker til feil ID selv om navnet i hendelsen er riktig.
-    const cleanName = String(name || "").trim();
-    if (cleanName) {
-      const byName = playerKey(null, cleanName);
-      if (registry.has(byName)) return byName;
+  function resolveRoster(id, name) {
+    const cleanId = String(id || "").trim();
+    if (cleanId && FIXED_BY_ID.has(cleanId)) {
+      const canonicalName = FIXED_BY_ID.get(cleanId);
+      const key = nameKey(canonicalName);
+      if (!registry.has(key)) addRoster(cleanId, canonicalName, {}, 20);
+      return key;
     }
+    if (cleanId && rosterIdToKey.has(cleanId)) return rosterIdToKey.get(cleanId);
 
-    if (id && idToKey.has(String(id))) return idToKey.get(String(id));
-    return add(id, cleanName, {}, 20);
+    const canonicalName = String(name || "").trim();
+    const key = nameKey(canonicalName);
+    if (key && registry.has(key)) return key;
+    return addRoster(id, canonicalName, {}, 20);
   }
 
-  return { registry, resolve };
+  function resolveEvent(id, name) {
+    const canonicalName = eventName(id, name);
+    const key = nameKey(canonicalName);
+
+    // Ved historiske hendelser er navnet på hendelsen fasit når det finnes.
+    if (key) {
+      if (!registry.has(key)) addEvent(id, canonicalName, {}, 20);
+      return key;
+    }
+
+    const cleanId = String(id || "").trim();
+    if (cleanId && rosterIdToKey.has(cleanId)) return rosterIdToKey.get(cleanId);
+    return addEvent(id, canonicalName, {}, 20);
+  }
+
+  return { registry, resolveRoster, resolveEvent };
 }
 
-function authoritativeRoster(match, resolve, explicitPresent, explicitStarters) {
+function authoritativeRoster(match, resolveRoster, explicitPresent, explicitStarters) {
   const present = new Set();
   const starters = new Set();
 
   const addPresent = player => {
-    const key = resolve(player?.id, player?.name);
+    const key = resolveRoster(player?.id, player?.name);
     if (key) present.add(key);
     return key;
   };
@@ -147,8 +222,6 @@ function authoritativeRoster(match, resolve, explicitPresent, explicitStarters) 
   const squadPresent = Array.isArray(match?.squad?.present) ? match.squad.present : [];
   const squadStarters = Array.isArray(match?.squad?.starters) ? match.squad.starters : [];
 
-  // Etter en etterkorrigering er squad-listene fasit. Verken en gammel lineup
-  // eller gamle player.starter-flagg får lov til å overstyre dem.
   if (corrected && (squadPresent.length || squadStarters.length)) {
     for (const player of squadPresent) addPresent(player);
     for (const player of squadStarters) addStarter(player);
@@ -162,9 +235,10 @@ function authoritativeRoster(match, resolve, explicitPresent, explicitStarters) 
   }
 
   const stored = playerSource(match);
-  Object.values(stored).forEach(player => {
-    if (player?.present === true) addPresent(player);
-    if (player?.present === true && player?.starter === true) addStarter(player);
+  Object.entries(stored).forEach(([id, player]) => {
+    const candidate = { id: player?.id || id, name: player?.name };
+    if (player?.present === true) addPresent(candidate);
+    if (player?.present === true && player?.starter === true) addStarter(candidate);
   });
   if (starters.size) return { present, starters };
 
@@ -188,13 +262,14 @@ function findMatchEndMs(match) {
 }
 
 export function calculatePlayingTime(match, options = {}) {
-  const { registry, resolve } = buildRegistry(match);
+  const { registry, resolveRoster, resolveEvent } = buildRegistry(match);
   const { present, starters } = authoritativeRoster(
     match,
-    resolve,
+    resolveRoster,
     options.presentPlayers,
     options.starterPlayers
   );
+
   const endMs = findMatchEndMs(match);
   const states = new Map();
   const referenced = new Set();
@@ -236,10 +311,10 @@ export function calculatePlayingTime(match, options = {}) {
 
   for (const { event, at } of timeline) {
     if (event.type === "substitution" || event.type === "sub") {
-      leave(resolve(event?.outPlayerId, event?.outPlayerName), at);
-      enter(resolve(event?.inPlayerId, event?.inPlayerName), at);
+      leave(resolveEvent(event?.outPlayerId, event?.outPlayerName), at);
+      enter(resolveEvent(event?.inPlayerId, event?.inPlayerName), at);
     } else {
-      leave(resolve(event?.playerId, event?.playerName), at);
+      leave(resolveEvent(event?.playerId, event?.playerName), at);
     }
   }
 
@@ -279,56 +354,6 @@ export function calculatePlayingTime(match, options = {}) {
     matchEndMs: endMs,
     starterCount: starters.size
   };
-}
-
-export function getManualOverrides(match) {
-  if (Number(match?.playingTimeManualOverrideVersion) !== MANUAL_OVERRIDE_VERSION) {
-    return new Map();
-  }
-
-  const map = new Map();
-  for (const item of Array.isArray(match?.playingTimeManualOverrides)
-    ? match.playingTimeManualOverrides
-    : []) {
-    const key = playerKey(item?.id, item?.name);
-    if (!key) continue;
-    map.set(key, {
-      id: item?.id || "",
-      name: item?.name || "",
-      minutes: Math.max(0, Math.round(Number(item?.minutes) || 0)),
-      setAt: item?.setAt || ""
-    });
-  }
-  return map;
-}
-
-export function applyManualOverrides(match, autoRows) {
-  const overrides = getManualOverrides(match);
-  if (!overrides.size) return autoRows.map(row => ({ ...row }));
-
-  const result = autoRows.map(row => ({ ...row }));
-  const byKey = new Map(result.map(row => [playerKey(row?.id, row?.name), row]));
-
-  for (const [key, override] of overrides) {
-    const row = byKey.get(key);
-    if (row) {
-      row.minutes = override.minutes;
-      continue;
-    }
-
-    const old = (match?.playingTime || []).find(player =>
-      playerKey(player?.id, player?.name) === key
-    );
-    result.push({
-      id: override.id || old?.id || key,
-      name: override.name || old?.name || "Ukjent spiller",
-      minutes: override.minutes,
-      cards: Array.isArray(old?.cards) ? old.cards : []
-    });
-  }
-
-  result.sort((a, b) => norm(a.name).localeCompare(norm(b.name), "no"));
-  return result;
 }
 
 export function comparablePlayingTime(rows) {
