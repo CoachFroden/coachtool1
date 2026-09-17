@@ -1,7 +1,7 @@
 // Én ren beregningsmotor for spilletid i ferdigspilte kamper.
 // Ingen Firestore, ingen reloads, ingen sideeffekter.
 
-export const PLAYING_TIME_SCHEMA_VERSION = 11;
+export const PLAYING_TIME_SCHEMA_VERSION = 12;
 export const MANUAL_OVERRIDE_VERSION = 3;
 
 function norm(value) {
@@ -106,10 +106,17 @@ function buildRegistry(match) {
   }
 
   function resolve(id, name) {
+    // For korrigerte/historiske kamper er hendelsesnavnet mer pålitelig enn
+    // gamle spiller-ID-er. En feil i opprinnelig lagoppstilling kan ha gjort at
+    // et bytte peker til feil ID selv om navnet i hendelsen er riktig.
+    const cleanName = String(name || "").trim();
+    if (cleanName) {
+      const byName = playerKey(null, cleanName);
+      if (registry.has(byName)) return byName;
+    }
+
     if (id && idToKey.has(String(id))) return idToKey.get(String(id));
-    const key = playerKey(null, name);
-    if (name && registry.has(key)) return key;
-    return add(id, name, {}, 20);
+    return add(id, cleanName, {}, 20);
   }
 
   return { registry, resolve };
