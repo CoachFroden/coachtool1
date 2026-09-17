@@ -6,8 +6,13 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-const CALC_VERSION = 5;
+const CALC_VERSION = 6;
 const RELOAD_KEY = "coachtool1:playingtime-v2-reloaded";
+
+function timestamp(value) {
+  const ms = Date.parse(String(value || ""));
+  return Number.isFinite(ms) ? ms : 0;
+}
 
 function norm(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("no");
@@ -266,9 +271,20 @@ async function reconcile() {
   const match = { id: snap.id, ...snap.data() };
   if (String(match.status || "").toUpperCase() !== "ENDED") return;
 
+  const manualAt = timestamp(match?.playingTimeManualCorrectionAt);
+  const requestedAt = timestamp(match?.playingTimeRecalcRequestedAt);
+
+  // Manuelle minuttkorrigeringer er fasit. Automatisk beregning får bare
+  // kjøre etter at en senere bytte-/kort-/troppsendring eksplisitt ber om det.
+  if (!requestedAt || (manualAt && requestedAt <= manualAt)) {
+    sessionStorage.removeItem(`${RELOAD_KEY}:${matchId}`);
+    return;
+  }
+
   const calculated = calculate(match);
   const version = Number(match?.playingTimeCalculation?.version) || 0;
-  const needsWrite = version < CALC_VERSION || !samePlayingTime(match.playingTime, calculated.playingTime);
+  const needsWrite = requestedAt > 0 || version < CALC_VERSION ||
+    !samePlayingTime(match.playingTime, calculated.playingTime);
   if (!needsWrite) {
     sessionStorage.removeItem(`${RELOAD_KEY}:${matchId}`);
     return;
@@ -278,8 +294,10 @@ async function reconcile() {
     playingTime: calculated.playingTime,
     playingTimeAutoCalculated: true,
     playingTimeAutoCalculatedAt: new Date().toISOString(),
+    playingTimeRecalcRequestedAt: null,
     playingTimeCalculation: {
       source: "corrected-starters-substitutions-match-end",
+      mode: "auto",
       version: CALC_VERSION,
       matchEndMs: calculated.matchEndMs,
       starterCount: calculated.starterCount
