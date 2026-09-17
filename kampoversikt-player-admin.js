@@ -5,13 +5,13 @@ import {
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { recalculateMatchPlayingTime } from "./postmatch-playingtime-sync.js?v=20260918-1";
+import { recalculateMatchPlayingTime } from "./postmatch-playingtime-sync.js?v=20260918-2";
 import {
   PLAYING_TIME_SCHEMA_VERSION,
   MANUAL_OVERRIDE_VERSION,
   calculatePlayingTime,
   applyManualOverrides
-} from "./postmatch-playingtime-core.js?v=20260918-1";
+} from "./postmatch-playingtime-core.js?v=20260918-2";
 
 let activeMatchId = null;
 
