@@ -5,6 +5,7 @@ import {
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { recalculatePlayingTimeForMatch } from "./kampoversikt-playingtime-v2.js";
 
 let activeMatchId = null;
 
@@ -256,10 +257,23 @@ function matchLengthMinutes(match) {
 
 async function openPlayerAdmin(matchId) {
   activeMatchId = matchId;
-  const snap = await getDoc(doc(db, "matches", matchId));
-  if (!snap.exists()) return;
-  const match = { id: snap.id, ...snap.data() };
+
+  // Sørg for at minuttallene som vises er beregnet fra den korrigerte
+  // starterlisten og de faktiske byttehendelsene før dialogen åpnes.
+  const recalculated = await recalculatePlayingTimeForMatch(matchId);
+  const match = recalculated || (() => null)();
+  if (!match) {
+    const snap = await getDoc(doc(db, "matches", matchId));
+    if (!snap.exists()) return;
+    const fallback = { id: snap.id, ...snap.data() };
+    if (String(fallback.status || "").toUpperCase() !== "ENDED") return;
+    return renderPlayerAdmin(matchId, fallback);
+  }
   if (String(match.status || "").toUpperCase() !== "ENDED") return;
+  return renderPlayerAdmin(matchId, match);
+}
+
+function renderPlayerAdmin(matchId, match) {
 
   const dialog = ensureDialog();
   const meta = match.meta || {};
