@@ -1,8 +1,8 @@
 // Én ren beregningsmotor for spilletid i ferdigspilte kamper.
 // Ingen Firestore, ingen reloads, ingen sideeffekter.
 
-export const PLAYING_TIME_SCHEMA_VERSION = 10;
-export const MANUAL_OVERRIDE_VERSION = 2;
+export const PLAYING_TIME_SCHEMA_VERSION = 11;
+export const MANUAL_OVERRIDE_VERSION = 3;
 
 function norm(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("no");
