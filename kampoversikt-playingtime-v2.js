@@ -6,7 +6,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-const CALC_VERSION = 4;
+const CALC_VERSION = 5;
 const RELOAD_KEY = "coachtool1:playingtime-v2-reloaded";
 
 function norm(value) {
@@ -108,45 +108,45 @@ function correctedPlayerKeys(match, resolve) {
   const stored = playerSource(match);
   const hasPostMatchCorrection = Boolean(match?.postMatchPlayerCorrection?.correctedAt);
 
+  const addPresent = player => {
+    const key = resolve(player?.id, player?.name);
+    if (key) present.add(key);
+    return key;
+  };
+
+  const addStarter = player => {
+    const key = addPresent(player);
+    if (key) starters.add(key);
+  };
+
+  // Etter en manuell etterkorrigering lagres fasiten i tre parallelle felt:
+  // players[].starter/present, squad.starters/present og lineup.
+  // Slå dem sammen i stedet for å la én av kildene kunne utelukke en korrigert starter.
   if (hasPostMatchCorrection) {
     Object.values(stored).forEach(player => {
-      const key = resolve(player?.id, player?.name);
-      if (!key) return;
-      if (player?.present === true) present.add(key);
-      if (player?.present === true && player?.starter === true) starters.add(key);
+      if (player?.present === true) addPresent(player);
+      if (player?.present === true && player?.starter === true) addStarter(player);
     });
+
+    for (const player of match?.squad?.present || []) addPresent(player);
+    for (const player of match?.squad?.starters || []) addStarter(player);
+    for (const player of match?.lineup || []) addStarter(player);
+
     return { present, starters };
   }
 
-  for (const player of match?.squad?.present || []) {
-    const key = resolve(player?.id, player?.name);
-    if (key) present.add(key);
-  }
-  for (const player of match?.squad?.starters || []) {
-    const key = resolve(player?.id, player?.name);
-    if (key) {
-      present.add(key);
-      starters.add(key);
-    }
-  }
+  for (const player of match?.squad?.present || []) addPresent(player);
+  for (const player of match?.squad?.starters || []) addStarter(player);
 
   if (!starters.size) {
     Object.values(stored).forEach(player => {
-      const key = resolve(player?.id, player?.name);
-      if (!key) return;
-      if (player?.present === true) present.add(key);
-      if (player?.starter === true) starters.add(key);
+      if (player?.present === true) addPresent(player);
+      if (player?.starter === true) addStarter(player);
     });
   }
 
   if (!starters.size) {
-    for (const player of match?.lineup || []) {
-      const key = resolve(player?.id, player?.name);
-      if (key) {
-        present.add(key);
-        starters.add(key);
-      }
-    }
+    for (const player of match?.lineup || []) addStarter(player);
   }
 
   return { present, starters };
