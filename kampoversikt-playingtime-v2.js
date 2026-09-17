@@ -315,6 +315,52 @@ function samePlayingTime(a, b) {
   return JSON.stringify(comparable(a)) === JSON.stringify(comparable(b));
 }
 
+export async function recalculatePlayingTimeForMatch(matchId) {
+  if (!matchId) return null;
+
+  const ref = doc(db, "matches", matchId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+
+  const match = { id: snap.id, ...snap.data() };
+  if (String(match.status || "").toUpperCase() !== "ENDED") return match;
+
+  // Vi tvinger bare en fersk beregning når kampen faktisk er etterkorrigert
+  // eller det allerede er bedt om omberegning. Vanlige gamle kamper røres ikke.
+  const hasCorrection = Boolean(match?.postMatchPlayerCorrection?.correctedAt);
+  const requestedAt = timestamp(match?.playingTimeRecalcRequestedAt);
+  if (!hasCorrection && !requestedAt) return match;
+
+  const calculated = calculate(match);
+  const finalPlayingTime = applyManualOverrides(match, calculated.playingTime);
+
+  if (!samePlayingTime(match.playingTime, finalPlayingTime) ||
+      requestedAt ||
+      Number(match?.playingTimeCalculation?.version || 0) < CALC_VERSION) {
+    await updateDoc(ref, {
+      playingTime: finalPlayingTime,
+      playingTimeAutoCalculated: true,
+      playingTimeAutoCalculatedAt: new Date().toISOString(),
+      playingTimeRecalcRequestedAt: null,
+      playingTimeCalculation: {
+        source: manualOverrides(match).size
+          ? "auto-with-player-manual-overrides"
+          : "corrected-starters-substitutions-match-end",
+        mode: manualOverrides(match).size ? "mixed" : "auto",
+        version: CALC_VERSION,
+        matchEndMs: calculated.matchEndMs,
+        starterCount: calculated.starterCount
+      },
+      updatedAt: serverTimestamp()
+    });
+
+    const fresh = await getDoc(ref);
+    return fresh.exists() ? { id: fresh.id, ...fresh.data() } : null;
+  }
+
+  return match;
+}
+
 async function reconcile() {
   const params = new URLSearchParams(window.location.search);
   const matchId = params.get("matchId");
