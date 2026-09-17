@@ -11,7 +11,7 @@ import {
   MANUAL_OVERRIDE_VERSION,
   calculatePlayingTime,
   samePlayingTime
-} from "./postmatch-playingtime-core.js?v=20260918-2";
+} from "./postmatch-playingtime-core.js?v=20260918-3";
 
 export async function recalculateMatchPlayingTime(matchId, options = {}) {
   if (!matchId) return null;
