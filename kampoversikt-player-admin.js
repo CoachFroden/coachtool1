@@ -227,8 +227,14 @@ function collectPlayers(match) {
     });
   }
 
-  for (const player of match?.lineup || []) {
-    add(player?.id, player?.name, { present: true, starter: true });
+  const hasPostMatchCorrection = Boolean(match?.postMatchPlayerCorrection?.correctedAt);
+
+  // Etter en etterkorrigering er squad-listene fasiten. En gammel lineup
+  // skal ikke kunne krysse av en spiller som starter igjen.
+  if (!hasPostMatchCorrection) {
+    for (const player of match?.lineup || []) {
+      add(player?.id, player?.name, { present: true, starter: true });
+    }
   }
 
   if (Array.isArray(match?.squad?.present)) {
