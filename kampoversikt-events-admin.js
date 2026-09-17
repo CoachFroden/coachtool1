@@ -6,7 +6,7 @@ import {
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { recalculateMatchPlayingTime } from "./postmatch-playingtime-sync.js";
+import { recalculateMatchPlayingTime } from "./postmatch-playingtime-sync.js?v=20260918-1";
 
 let activeMatchId = null;
 let activeEventIndex = null;
