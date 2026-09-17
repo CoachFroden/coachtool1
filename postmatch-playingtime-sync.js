@@ -10,7 +10,6 @@ import {
   PLAYING_TIME_SCHEMA_VERSION,
   MANUAL_OVERRIDE_VERSION,
   calculatePlayingTime,
-  applyManualOverrides,
   samePlayingTime
 } from "./postmatch-playingtime-core.js?v=20260918-2";
 
@@ -37,24 +36,20 @@ export async function recalculateMatchPlayingTime(matchId, options = {}) {
     return match;
   }
 
-  // Gamle forsøk på globale/manuelle overstyringer var ikke entydige.
-  // Migrer dem bort én gang. Nye overstyringer opprettes eksplisitt per spiller.
-  const needsOverrideMigration =
-    Number(match?.playingTimeManualOverrideVersion) !== MANUAL_OVERRIDE_VERSION;
-
-  const workingMatch = needsOverrideMigration
-    ? {
-        ...match,
-        playingTimeManualOverrides: [],
-        playingTimeManualOverrideVersion: MANUAL_OVERRIDE_VERSION
-      }
-    : match;
+  // Spilletid har én eneste sannhetskilde: korrigert startellever + hendelser + kampslutt.
+  // Eldre manuelle overstyringer ignoreres og ryddes bort.
+  const workingMatch = {
+    ...match,
+    playingTimeManualOverrides: [],
+    playingTimeManualOverrideVersion: MANUAL_OVERRIDE_VERSION
+  };
 
   const calculated = calculatePlayingTime(workingMatch);
-  const finalPlayingTime = applyManualOverrides(workingMatch, calculated.playingTime);
+  const finalPlayingTime = calculated.playingTime;
 
   const needsWrite =
-    needsOverrideMigration ||
+    Array.isArray(match?.playingTimeManualOverrides) && match.playingTimeManualOverrides.length > 0 ||
+    Number(match?.playingTimeManualOverrideVersion) !== MANUAL_OVERRIDE_VERSION ||
     Number(match?.playingTimeCalculation?.version) !== PLAYING_TIME_SCHEMA_VERSION ||
     !samePlayingTime(match.playingTime, finalPlayingTime);
 
@@ -66,10 +61,8 @@ export async function recalculateMatchPlayingTime(matchId, options = {}) {
   }
 
   const calculation = {
-    source: (workingMatch.playingTimeManualOverrides || []).length
-      ? "auto-with-player-manual-overrides"
-      : "starters-substitutions-match-end",
-    mode: (workingMatch.playingTimeManualOverrides || []).length ? "mixed" : "auto",
+    source: "starters-substitutions-match-end",
+    mode: "auto",
     version: PLAYING_TIME_SCHEMA_VERSION,
     matchEndMs: calculated.matchEndMs,
     starterCount: calculated.starterCount
