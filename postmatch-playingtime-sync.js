@@ -14,7 +14,7 @@ import {
   samePlayingTime
 } from "./postmatch-playingtime-core.js";
 
-export async function recalculateMatchPlayingTime(matchId) {
+export async function recalculateMatchPlayingTime(matchId, options = {}) {
   if (!matchId) return null;
 
   const ref = doc(db, "matches", matchId);
@@ -23,6 +23,19 @@ export async function recalculateMatchPlayingTime(matchId) {
 
   const match = { id: snap.id, ...snap.data() };
   if (String(match.status || "").toUpperCase() !== "ENDED") return match;
+
+  const hasPostMatchCorrection = Boolean(match?.postMatchPlayerCorrection?.correctedAt);
+  const hasLegacyOverrideData =
+    Array.isArray(match?.playingTimeManualOverrides) ||
+    Number(match?.playingTimeManualOverrideVersion) > 0 ||
+    match?.playingTimeCalculation?.mode === "manual" ||
+    match?.playingTimeCalculation?.mode === "mixed";
+
+  // Ikke skriv om historiske kamper bare fordi vinduet åpnes.
+  // Hendelsesredigering kan eksplisitt tvinge beregning med { force: true }.
+  if (!options.force && !hasPostMatchCorrection && !hasLegacyOverrideData) {
+    return match;
+  }
 
   // Gamle forsøk på globale/manuelle overstyringer var ikke entydige.
   // Migrer dem bort én gang. Nye overstyringer opprettes eksplisitt per spiller.
