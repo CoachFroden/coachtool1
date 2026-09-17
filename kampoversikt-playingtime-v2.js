@@ -6,7 +6,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-const CALC_VERSION = 6;
+const CALC_VERSION = 7;
 const RELOAD_KEY = "coachtool1:playingtime-v2-reloaded";
 
 function timestamp(value) {
@@ -25,6 +25,52 @@ function firstName(value) {
 function keyFor(id, name) {
   const first = firstName(name);
   return first ? `name:${first}` : `id:${String(id || "unknown")}`;
+}
+
+function manualOverrides(match) {
+  const rows = Array.isArray(match?.playingTimeManualOverrides)
+    ? match.playingTimeManualOverrides
+    : [];
+  const map = new Map();
+  for (const item of rows) {
+    const key = keyFor(item?.id, item?.name);
+    if (!key) continue;
+    map.set(key, {
+      id: item?.id || "",
+      name: item?.name || "",
+      minutes: Math.max(0, Math.round(Number(item?.minutes) || 0))
+    });
+  }
+  return map;
+}
+
+function applyManualOverrides(match, rows) {
+  const overrides = manualOverrides(match);
+  if (!overrides.size) return rows;
+
+  const result = rows.map(row => ({ ...row }));
+  const byKey = new Map(result.map(row => [keyFor(row?.id, row?.name), row]));
+
+  for (const [key, override] of overrides) {
+    const row = byKey.get(key);
+    if (row) {
+      row.minutes = override.minutes;
+      continue;
+    }
+
+    const old = (match?.playingTime || []).find(player =>
+      keyFor(player?.id, player?.name) === key
+    );
+    result.push({
+      id: override.id || old?.id || key,
+      name: override.name || old?.name || "Ukjent spiller",
+      minutes: override.minutes,
+      cards: Array.isArray(old?.cards) ? old.cards : []
+    });
+  }
+
+  result.sort((a, b) => norm(a.name).localeCompare(norm(b.name), "no"));
+  return result;
 }
 
 function parseMinute(value) {
@@ -271,33 +317,43 @@ async function reconcile() {
   const match = { id: snap.id, ...snap.data() };
   if (String(match.status || "").toUpperCase() !== "ENDED") return;
 
-  const manualAt = timestamp(match?.playingTimeManualCorrectionAt);
   const requestedAt = timestamp(match?.playingTimeRecalcRequestedAt);
+  const overrides = manualOverrides(match);
+  const legacyGlobalManual =
+    match?.playingTimeCalculation?.mode === "manual" &&
+    !Array.isArray(match?.playingTimeManualOverrides);
 
-  // Manuelle minuttkorrigeringer er fasit. Automatisk beregning får bare
-  // kjøre etter at en senere bytte-/kort-/troppsendring eksplisitt ber om det.
-  if (!requestedAt || (manualAt && requestedAt <= manualAt)) {
+  // Normalt regner vi bare når en spiller-/bytteendring eksplisitt ber om det.
+  // Den gamle globale "manual"-modusen migreres én gang til ny modell.
+  if (!requestedAt && !legacyGlobalManual) {
     sessionStorage.removeItem(`${RELOAD_KEY}:${matchId}`);
     return;
   }
 
   const calculated = calculate(match);
+  const finalPlayingTime = applyManualOverrides(match, calculated.playingTime);
   const version = Number(match?.playingTimeCalculation?.version) || 0;
-  const needsWrite = requestedAt > 0 || version < CALC_VERSION ||
-    !samePlayingTime(match.playingTime, calculated.playingTime);
+  const needsWrite =
+    requestedAt > 0 ||
+    legacyGlobalManual ||
+    version < CALC_VERSION ||
+    !samePlayingTime(match.playingTime, finalPlayingTime);
+
   if (!needsWrite) {
     sessionStorage.removeItem(`${RELOAD_KEY}:${matchId}`);
     return;
   }
 
   await updateDoc(ref, {
-    playingTime: calculated.playingTime,
+    playingTime: finalPlayingTime,
     playingTimeAutoCalculated: true,
     playingTimeAutoCalculatedAt: new Date().toISOString(),
     playingTimeRecalcRequestedAt: null,
     playingTimeCalculation: {
-      source: "corrected-starters-substitutions-match-end",
-      mode: "auto",
+      source: overrides.size
+        ? "auto-with-player-manual-overrides"
+        : "corrected-starters-substitutions-match-end",
+      mode: overrides.size ? "mixed" : "auto",
       version: CALC_VERSION,
       matchEndMs: calculated.matchEndMs,
       starterCount: calculated.starterCount
