@@ -5,7 +5,13 @@ import {
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { recalculatePlayingTimeForMatch } from "./kampoversikt-playingtime-v2.js";
+import { recalculateMatchPlayingTime } from "./postmatch-playingtime-sync.js";
+import {
+  PLAYING_TIME_SCHEMA_VERSION,
+  MANUAL_OVERRIDE_VERSION,
+  calculatePlayingTime,
+  applyManualOverrides
+} from "./postmatch-playingtime-core.js";
 
 let activeMatchId = null;
 
@@ -118,6 +124,9 @@ function canonicalPlayerData(id, name) {
 
 function existingManualOverrides(match) {
   const map = new Map();
+  if (Number(match?.playingTimeManualOverrideVersion) !== MANUAL_OVERRIDE_VERSION) {
+    return map;
+  }
   const rows = Array.isArray(match?.playingTimeManualOverrides)
     ? match.playingTimeManualOverrides
     : [];
@@ -181,7 +190,7 @@ function collectPlayers(match) {
 
   const add = (id, name, source = {}) => {
     const cleanName = String(name || "").trim();
-    if (!cleanName) return;
+    if (!cleanName) return null;
 
     const identity = playerIdentity(id, cleanName);
     const canonical = canonicalPlayerData(id, cleanName);
@@ -200,49 +209,59 @@ function collectPlayers(match) {
       map.set(identity, row);
     }
 
-    if (source.present === true) row.present = true;
-    if (source.starter === true) {
-      row.starter = true;
-      row.present = true;
-    }
-    if (Object.prototype.hasOwnProperty.call(source, "minutes") && Number.isFinite(Number(source.minutes))) {
+    if (Object.prototype.hasOwnProperty.call(source, "minutes") &&
+        Number.isFinite(Number(source.minutes))) {
       row.minutes = Math.max(row.minutes, Number(source.minutes));
     }
     if (Array.isArray(source.cards) && source.cards.length >= row.cards.length) {
       row.cards = source.cards;
     }
+    return row;
   };
 
-  if (match?.players && typeof match.players === "object" && !Array.isArray(match.players)) {
-    const source = match.players.home && typeof match.players.home === "object"
-      ? match.players.home
-      : match.players;
-    Object.entries(source).forEach(([id, player]) => add(player?.id || id, player?.name, player || {}));
-  }
-
-  for (const player of match?.playingTime || []) {
-    add(player?.id, player?.name, {
-      present: true,
-      minutes: Number(player?.minutes) || 0,
+  const raw = rawPlayerSource(match);
+  Object.entries(raw).forEach(([id, player]) => {
+    add(player?.id || id, player?.name, {
       cards: player?.cards || []
     });
-  }
+  });
 
-  const hasPostMatchCorrection = Boolean(match?.postMatchPlayerCorrection?.correctedAt);
+  for (const player of match?.playingTime || []) add(player?.id, player?.name, player);
+  for (const player of match?.lineup || []) add(player?.id, player?.name, player);
+  for (const player of match?.squad?.present || []) add(player?.id, player?.name, player);
+  for (const player of match?.squad?.starters || []) add(player?.id, player?.name, player);
 
-  // Etter en etterkorrigering er squad-listene fasiten. En gammel lineup
-  // skal ikke kunne krysse av en spiller som starter igjen.
-  if (!hasPostMatchCorrection) {
-    for (const player of match?.lineup || []) {
-      add(player?.id, player?.name, { present: true, starter: true });
+  const markPresent = player => {
+    const row = add(player?.id, player?.name, player);
+    if (row) row.present = true;
+    return row;
+  };
+  const markStarter = player => {
+    const row = markPresent(player);
+    if (row) row.starter = true;
+  };
+
+  const corrected = Boolean(match?.postMatchPlayerCorrection?.correctedAt);
+  const squadPresent = Array.isArray(match?.squad?.present) ? match.squad.present : [];
+  const squadStarters = Array.isArray(match?.squad?.starters) ? match.squad.starters : [];
+
+  if (corrected && (squadPresent.length || squadStarters.length)) {
+    // Etter etterkorrigering er squad-feltene eneste fasit for Med/Start.
+    squadPresent.forEach(markPresent);
+    squadStarters.forEach(markStarter);
+  } else {
+    Object.entries(raw).forEach(([id, player]) => {
+      const candidate = { id: player?.id || id, name: player?.name };
+      if (player?.present === true) markPresent(candidate);
+      if (player?.present === true && player?.starter === true) markStarter(candidate);
+    });
+
+    squadPresent.forEach(markPresent);
+    squadStarters.forEach(markStarter);
+
+    if (![...map.values()].some(player => player.starter)) {
+      for (const player of match?.lineup || []) markStarter(player);
     }
-  }
-
-  if (Array.isArray(match?.squad?.present)) {
-    for (const player of match.squad.present) add(player?.id, player?.name, { present: true });
-  }
-  if (Array.isArray(match?.squad?.starters)) {
-    for (const player of match.squad.starters) add(player?.id, player?.name, { present: true, starter: true });
   }
 
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "no"));
@@ -260,7 +279,7 @@ async function openPlayerAdmin(matchId) {
 
   // Sørg for at minuttallene som vises er beregnet fra den korrigerte
   // starterlisten og de faktiske byttehendelsene før dialogen åpnes.
-  const recalculated = await recalculatePlayingTimeForMatch(matchId);
+  const recalculated = await recalculateMatchPlayingTime(matchId);
   const match = recalculated || (() => null)();
   if (!match) {
     const snap = await getDoc(doc(db, "matches", matchId));
@@ -297,6 +316,13 @@ function renderPlayerAdmin(matchId, match) {
       <label class="playerAdminCheck" title="Startet kampen"><input type="checkbox" data-field="starter" ${player.starter ? "checked" : ""} ${player.present ? "" : "disabled"}></label>
       <input class="playerAdminMinutes" data-field="minutes" type="number" inputmode="numeric" min="0" max="${Math.max(200, maxMinutes + 30)}" step="1" value="${Math.max(0, Math.round(Number(player.minutes) || 0))}" ${player.present ? "" : "disabled"} aria-label="Minutter for ${esc(player.name)}">
     </div>`).join("");
+
+  list.querySelectorAll('[data-field="minutes"]').forEach(input => {
+    input.addEventListener("input", () => {
+      const row = input.closest(".playerAdminRow");
+      if (row) row.dataset.minutesTouched = "1";
+    });
+  });
 
   list.querySelectorAll('[data-field="present"]').forEach(input => {
     input.addEventListener("change", () => {
