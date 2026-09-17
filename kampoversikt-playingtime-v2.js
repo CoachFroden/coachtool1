@@ -6,7 +6,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-const CALC_VERSION = 7;
+const CALC_VERSION = 8;
 const RELOAD_KEY = "coachtool1:playingtime-v2-reloaded";
 
 function timestamp(value) {
@@ -170,19 +170,28 @@ function correctedPlayerKeys(match, resolve) {
     if (key) starters.add(key);
   };
 
-  // Etter en manuell etterkorrigering lagres fasiten i tre parallelle felt:
-  // players[].starter/present, squad.starters/present og lineup.
-  // Slå dem sammen i stedet for å la én av kildene kunne utelukke en korrigert starter.
+  // Etter en manuell etterkorrigering er squad-listene den autoritative
+  // kampfasiten. lineup er bare en visuell baneplassering og skal aldri kunne
+  // gjøre en spiller til starter igjen.
   if (hasPostMatchCorrection) {
+    const correctedPresent = Array.isArray(match?.squad?.present)
+      ? match.squad.present
+      : [];
+    const correctedStarters = Array.isArray(match?.squad?.starters)
+      ? match.squad.starters
+      : [];
+
+    if (correctedPresent.length || correctedStarters.length) {
+      for (const player of correctedPresent) addPresent(player);
+      for (const player of correctedStarters) addStarter(player);
+      return { present, starters };
+    }
+
+    // Fallback for eldre korrigerte kamper som mangler squad-listene.
     Object.values(stored).forEach(player => {
       if (player?.present === true) addPresent(player);
       if (player?.present === true && player?.starter === true) addStarter(player);
     });
-
-    for (const player of match?.squad?.present || []) addPresent(player);
-    for (const player of match?.squad?.starters || []) addStarter(player);
-    for (const player of match?.lineup || []) addStarter(player);
-
     return { present, starters };
   }
 
@@ -323,16 +332,17 @@ async function reconcile() {
     match?.playingTimeCalculation?.mode === "manual" &&
     !Array.isArray(match?.playingTimeManualOverrides);
 
+  const version = Number(match?.playingTimeCalculation?.version) || 0;
+
   // Normalt regner vi bare når en spiller-/bytteendring eksplisitt ber om det.
-  // Den gamle globale "manual"-modusen migreres én gang til ny modell.
-  if (!requestedAt && !legacyGlobalManual) {
+  // Ny beregningsversjon får også kjøre én gang for å reparere eldre data.
+  if (!requestedAt && !legacyGlobalManual && version >= CALC_VERSION) {
     sessionStorage.removeItem(`${RELOAD_KEY}:${matchId}`);
     return;
   }
 
   const calculated = calculate(match);
   const finalPlayingTime = applyManualOverrides(match, calculated.playingTime);
-  const version = Number(match?.playingTimeCalculation?.version) || 0;
   const needsWrite =
     requestedAt > 0 ||
     legacyGlobalManual ||
