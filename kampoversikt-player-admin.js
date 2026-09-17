@@ -133,8 +133,8 @@ function ensureDialog() {
         <button id="playedPlayerAdminClose" class="playerAdminClose" type="button" aria-label="Lukk">×</button>
       </div>
       <p class="playerAdminHelp">
-        Rett hvem som faktisk var med, hvem som startet og hvor mange minutter hver spiller spilte.
-        Listen slår automatisk sammen eldre dubletter av samme spiller. Bytter redigeres under Hendelser.
+        Rett hvem som faktisk var med og hvem som startet. Hvis du endrer minuttfeltet manuelt,
+        blir det en eksplisitt overstyring som beholdes. Bytter redigeres under Hendelser.
       </p>
       <div class="playerAdminColumns" aria-hidden="true">
         <span>Spiller</span><span>Med</span><span>Start</span><span>Min</span>
@@ -250,7 +250,10 @@ async function openPlayerAdmin(matchId) {
     <div class="playerAdminRow${player.present ? "" : " notPresent"}"
       data-player-id="${esc(player.id)}"
       data-player-name="${esc(player.name)}"
-      data-player-identity="${esc(player.identity)}">
+      data-player-identity="${esc(player.identity)}"
+      data-original-present="${player.present ? "1" : "0"}"
+      data-original-starter="${player.starter ? "1" : "0"}"
+      data-original-minutes="${Math.max(0, Math.round(Number(player.minutes) || 0))}">
       <span class="playerAdminName">${esc(player.name)}</span>
       <label class="playerAdminCheck" title="Var med i kampen"><input type="checkbox" data-field="present" ${player.present ? "checked" : ""}></label>
       <label class="playerAdminCheck" title="Startet kampen"><input type="checkbox" data-field="starter" ${player.starter ? "checked" : ""} ${player.present ? "" : "disabled"}></label>
@@ -337,6 +340,8 @@ async function saveCorrections(event) {
     const squadPresent = [];
     const squadStarters = [];
     let starterCount = 0;
+    let manualMinutesChanged = false;
+    let rosterChanged = false;
 
     for (const row of rows) {
       const id = row.dataset.playerId;
@@ -345,6 +350,19 @@ async function saveCorrections(event) {
       const present = row.querySelector('[data-field="present"]').checked;
       const starter = present && row.querySelector('[data-field="starter"]').checked;
       const minutes = present ? Number(row.querySelector('[data-field="minutes"]').value) : 0;
+      const originalPresent = row.dataset.originalPresent === "1";
+      const originalStarter = row.dataset.originalStarter === "1";
+      const originalMinutes = Number(row.dataset.originalMinutes || 0);
+
+      if (present !== originalPresent || starter !== originalStarter) {
+        rosterChanged = true;
+      }
+      if (
+        (present && originalPresent && Math.round(minutes) !== Math.round(originalMinutes)) ||
+        (present && !originalPresent && Math.round(minutes) > 0)
+      ) {
+        manualMinutesChanged = true;
+      }
 
       if (!Number.isFinite(minutes) || minutes < 0) {
         throw new Error(`Ugyldig spilletid for ${name}.`);
@@ -403,7 +421,8 @@ async function saveCorrections(event) {
       ? { ...match.players, home: cleanRawPlayers }
       : cleanRawPlayers;
 
-    await updateDoc(ref, {
+    const correctedAt = new Date().toISOString();
+    const updatePayload = {
       players: playersUpdate,
       playingTime,
       squad: {
@@ -414,12 +433,26 @@ async function saveCorrections(event) {
       lineup,
       lineupConfirmed: starterCount === 11,
       postMatchPlayerCorrection: {
-        correctedAt: new Date().toISOString(),
+        correctedAt,
         correctedPlayers: playingTime.length,
         duplicatesCleaned: true
       },
       updatedAt: serverTimestamp()
-    });
+    };
+
+    if (manualMinutesChanged) {
+      updatePayload.playingTimeManualCorrectionAt = correctedAt;
+      updatePayload.playingTimeCalculation = {
+        ...(match.playingTimeCalculation || {}),
+        source: "manual-player-correction",
+        mode: "manual",
+        manualAt: correctedAt
+      };
+    } else if (rosterChanged) {
+      updatePayload.playingTimeRecalcRequestedAt = correctedAt;
+    }
+
+    await updateDoc(ref, updatePayload);
 
     dialogCloseAndReload(activeMatchId);
   } catch (error) {
