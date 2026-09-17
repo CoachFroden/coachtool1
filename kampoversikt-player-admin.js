@@ -115,6 +115,24 @@ function canonicalPlayerData(id, name) {
   };
 }
 
+function existingManualOverrides(match) {
+  const map = new Map();
+  const rows = Array.isArray(match?.playingTimeManualOverrides)
+    ? match.playingTimeManualOverrides
+    : [];
+  for (const item of rows) {
+    const identity = playerIdentity(item?.id, item?.name);
+    if (!identity) continue;
+    map.set(identity, {
+      id: item?.id || "",
+      name: item?.name || "",
+      minutes: Math.max(0, Math.round(Number(item?.minutes) || 0)),
+      setAt: item?.setAt || ""
+    });
+  }
+  return map;
+}
+
 function ensureDialog() {
   let dialog = document.getElementById("playedPlayerAdminDialog");
   if (dialog) return dialog;
@@ -340,8 +358,9 @@ async function saveCorrections(event) {
     const squadPresent = [];
     const squadStarters = [];
     let starterCount = 0;
-    let manualMinutesChanged = false;
     let rosterChanged = false;
+    const overrideMap = existingManualOverrides(match);
+    const changedManualPlayers = new Set();
 
     for (const row of rows) {
       const id = row.dataset.playerId;
@@ -354,14 +373,27 @@ async function saveCorrections(event) {
       const originalStarter = row.dataset.originalStarter === "1";
       const originalMinutes = Number(row.dataset.originalMinutes || 0);
 
-      if (present !== originalPresent || starter !== originalStarter) {
-        rosterChanged = true;
-      }
-      if (
+      const rowRosterChanged = present !== originalPresent || starter !== originalStarter;
+      const rowMinutesChanged =
         (present && originalPresent && Math.round(minutes) !== Math.round(originalMinutes)) ||
-        (present && !originalPresent && Math.round(minutes) > 0)
-      ) {
-        manualMinutesChanged = true;
+        (present && !originalPresent && Math.round(minutes) > 0);
+
+      if (rowRosterChanged) rosterChanged = true;
+
+      if (!present) {
+        overrideMap.delete(identity);
+      } else if (rowMinutesChanged) {
+        changedManualPlayers.add(identity);
+        overrideMap.set(identity, {
+          id,
+          name,
+          minutes: Math.max(0, Math.round(minutes)),
+          setAt: new Date().toISOString()
+        });
+      } else if (rowRosterChanged) {
+        // Når start-/med-status endres uten at minuttfeltet røres, skal denne
+        // spilleren tilbake til automatisk beregning fra kampforløpet.
+        overrideMap.delete(identity);
       }
 
       if (!Number.isFinite(minutes) || minutes < 0) {
@@ -440,17 +472,31 @@ async function saveCorrections(event) {
       updatedAt: serverTimestamp()
     };
 
-    if (manualMinutesChanged) {
-      updatePayload.playingTimeManualCorrectionAt = correctedAt;
-      updatePayload.playingTimeCalculation = {
-        ...(match.playingTimeCalculation || {}),
-        source: "manual-player-correction",
-        mode: "manual",
-        manualAt: correctedAt
+    updatePayload.playingTimeManualOverrides = [...overrideMap.values()].map(item => {
+      const canonical = canonicalPlayerData(item.id, item.name);
+      return {
+        id: canonical.id,
+        name: canonical.name,
+        minutes: Math.max(0, Math.round(Number(item.minutes) || 0)),
+        setAt: item.setAt || correctedAt
       };
-    } else if (rosterChanged) {
+    });
+
+    if (changedManualPlayers.size) {
+      updatePayload.playingTimeManualCorrectionAt = correctedAt;
+    }
+
+    if (rosterChanged) {
+      // Auto-beregningen kjøres for resten av laget. Eventuelle eksplisitte
+      // spiller-overstyringer legges på igjen etter beregningen.
       updatePayload.playingTimeRecalcRequestedAt = correctedAt;
     }
+
+    updatePayload.playingTimeCalculation = {
+      ...(match.playingTimeCalculation || {}),
+      source: changedManualPlayers.size ? "player-manual-overrides" : (match.playingTimeCalculation?.source || "player-correction"),
+      mode: overrideMap.size ? "mixed" : "auto"
+    };
 
     await updateDoc(ref, updatePayload);
 
