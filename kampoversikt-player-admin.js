@@ -9,8 +9,7 @@ import { recalculateMatchPlayingTime } from "./postmatch-playingtime-sync.js?v=2
 import {
   PLAYING_TIME_SCHEMA_VERSION,
   MANUAL_OVERRIDE_VERSION,
-  calculatePlayingTime,
-  applyManualOverrides
+  calculatePlayingTime
 } from "./postmatch-playingtime-core.js?v=20260918-2";
 
 let activeMatchId = null;
@@ -161,8 +160,8 @@ function ensureDialog() {
         <button id="playedPlayerAdminClose" class="playerAdminClose" type="button" aria-label="Lukk">×</button>
       </div>
       <p class="playerAdminHelp">
-        Rett hvem som faktisk var med og hvem som startet. Hvis du endrer minuttfeltet manuelt,
-        blir det en eksplisitt overstyring som beholdes. Bytter redigeres under Hendelser.
+        Rett hvem som faktisk var med og hvem som startet. Spilletiden beregnes automatisk
+        fra startellever, bytter og kampslutt. Bytter redigeres under Hendelser.
       </p>
       <div class="playerAdminColumns" aria-hidden="true">
         <span>Spiller</span><span>Med</span><span>Start</span><span>Min</span>
@@ -314,15 +313,8 @@ function renderPlayerAdmin(matchId, match) {
       <span class="playerAdminName">${esc(player.name)}</span>
       <label class="playerAdminCheck" title="Var med i kampen"><input type="checkbox" data-field="present" ${player.present ? "checked" : ""}></label>
       <label class="playerAdminCheck" title="Startet kampen"><input type="checkbox" data-field="starter" ${player.starter ? "checked" : ""} ${player.present ? "" : "disabled"}></label>
-      <input class="playerAdminMinutes" data-field="minutes" type="number" inputmode="numeric" min="0" max="${Math.max(200, maxMinutes + 30)}" step="1" value="${Math.max(0, Math.round(Number(player.minutes) || 0))}" ${player.present ? "" : "disabled"} aria-label="Minutter for ${esc(player.name)}">
+      <input class="playerAdminMinutes" data-field="minutes" type="number" value="${Math.max(0, Math.round(Number(player.minutes) || 0))}" readonly aria-readonly="true" tabindex="-1" aria-label="Beregnet spilletid for ${esc(player.name)}">
     </div>`).join("");
-
-  list.querySelectorAll('[data-field="minutes"]').forEach(input => {
-    input.addEventListener("input", () => {
-      const row = input.closest(".playerAdminRow");
-      if (row) row.dataset.minutesTouched = "1";
-    });
-  });
 
   list.querySelectorAll('[data-field="present"]').forEach(input => {
     input.addEventListener("change", () => {
@@ -403,9 +395,7 @@ async function saveCorrections(event) {
     const rows = [...document.querySelectorAll("#playedPlayerAdminList .playerAdminRow")];
     const squadPresent = [];
     const squadStarters = [];
-    const overrideMap = existingManualOverrides(match);
     let starterCount = 0;
-    let manualMinutesChanged = false;
 
     for (const row of rows) {
       const id = row.dataset.playerId;
@@ -413,16 +403,9 @@ async function saveCorrections(event) {
       const identity = row.dataset.playerIdentity || playerIdentity(id, name);
       const present = row.querySelector('[data-field="present"]').checked;
       const starter = present && row.querySelector('[data-field="starter"]').checked;
-      const minutesInput = row.querySelector('[data-field="minutes"]');
-      const minutes = present ? Number(minutesInput.value) : 0;
-      const minutesTouched = row.dataset.minutesTouched === "1";
       const originalPresent = row.dataset.originalPresent === "1";
       const originalStarter = row.dataset.originalStarter === "1";
       const rosterChanged = present !== originalPresent || starter !== originalStarter;
-
-      if (!Number.isFinite(minutes) || minutes < 0) {
-        throw new Error(`Ugyldig spilletid for ${name}.`);
-      }
       if (starter) starterCount++;
 
       const canonical = canonicalPlayerData(id, name);
@@ -445,27 +428,11 @@ async function saveCorrections(event) {
         cards
       };
 
-      if (!present) {
-        overrideMap.delete(identity);
-        continue;
-      }
+      if (!present) continue;
 
       const playerId = canonical.id || storedKey;
       squadPresent.push({ id: playerId, name: canonical.name });
       if (starter) squadStarters.push({ id: playerId, name: canonical.name });
-
-      if (minutesTouched) {
-        manualMinutesChanged = true;
-        overrideMap.set(identity, {
-          id: playerId,
-          name: canonical.name,
-          minutes: Math.max(0, Math.round(minutes)),
-          setAt: new Date().toISOString()
-        });
-      } else if (rosterChanged) {
-        // Endret Med/Start uten å røre minutter = spilleren skal beregnes automatisk.
-        overrideMap.delete(identity);
-      }
     }
 
     if (starterCount > 11) {
@@ -506,16 +473,6 @@ async function saveCorrections(event) {
       : cleanRawPlayers;
 
     const correctedAt = new Date().toISOString();
-    const manualOverrides = [...overrideMap.values()].map(item => {
-      const canonical = canonicalPlayerData(item.id, item.name);
-      return {
-        id: canonical.id,
-        name: canonical.name,
-        minutes: Math.max(0, Math.round(Number(item.minutes) || 0)),
-        setAt: item.setAt || correctedAt
-      };
-    });
-
     const correctedMeta = {
       correctedAt,
       correctedPlayers: squadPresent.length,
@@ -532,7 +489,7 @@ async function saveCorrections(event) {
       },
       lineup,
       postMatchPlayerCorrection: correctedMeta,
-      playingTimeManualOverrides: manualOverrides,
+      playingTimeManualOverrides: [],
       playingTimeManualOverrideVersion: MANUAL_OVERRIDE_VERSION
     };
 
@@ -540,10 +497,7 @@ async function saveCorrections(event) {
       presentPlayers: squadPresent,
       starterPlayers: squadStarters
     });
-    const finalPlayingTime = applyManualOverrides(
-      draftMatch,
-      calculated.playingTime
-    );
+    const finalPlayingTime = calculated.playingTime;
 
     const updatePayload = {
       players: playersUpdate,
@@ -552,13 +506,11 @@ async function saveCorrections(event) {
       lineup,
       lineupConfirmed: starterCount === 11,
       postMatchPlayerCorrection: correctedMeta,
-      playingTimeManualOverrides: manualOverrides,
+      playingTimeManualOverrides: [],
       playingTimeManualOverrideVersion: MANUAL_OVERRIDE_VERSION,
       playingTimeCalculation: {
-        source: manualOverrides.length
-          ? "auto-with-player-manual-overrides"
-          : "starters-substitutions-match-end",
-        mode: manualOverrides.length ? "mixed" : "auto",
+        source: "starters-substitutions-match-end",
+        mode: "auto",
         version: PLAYING_TIME_SCHEMA_VERSION,
         matchEndMs: calculated.matchEndMs,
         starterCount: calculated.starterCount
@@ -569,9 +521,6 @@ async function saveCorrections(event) {
       updatedAt: serverTimestamp()
     };
 
-    if (manualMinutesChanged) {
-      updatePayload.playingTimeManualCorrectionAt = correctedAt;
-    }
 
     await updateDoc(ref, updatePayload);
     dialogCloseAndReload(activeMatchId);
