@@ -6,6 +6,7 @@ import {
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { recalculateMatchPlayingTime } from "./postmatch-playingtime-sync.js";
 
 let activeMatchId = null;
 let activeEventIndex = null;
@@ -397,7 +398,9 @@ function buildEventFromForm(match, original) {
 
   let playerId = null;
   let playerName = "";
+  let outPlayerId = "";
   let outPlayerName = "";
+  let inPlayerId = "";
   let inPlayerName = "";
 
   if (type === "goal" || type === "yellow" || type === "red") {
@@ -417,6 +420,8 @@ function buildEventFromForm(match, original) {
   if (type === "substitution") {
     const outSelect = document.getElementById("playedEventOutPlayer");
     const inSelect = document.getElementById("playedEventInPlayer");
+    outPlayerId = outSelect.value || "";
+    inPlayerId = inSelect.value || "";
     outPlayerName = outSelect.options[outSelect.selectedIndex]?.textContent || "";
     inPlayerName = inSelect.options[inSelect.selectedIndex]?.textContent || "";
     if (!outSelect.value || !inSelect.value) {
@@ -451,7 +456,9 @@ function buildEventFromForm(match, original) {
     period: minuteNumber == null ? (Number(original?.period) || 1) : (minuteNumber > halfLength ? 2 : 1),
     playerId: type === "goal" || type === "yellow" || type === "red" ? playerId : null,
     playerName: type === "goal" || type === "yellow" || type === "red" ? playerName : null,
+    outPlayerId: type === "substitution" ? outPlayerId : "",
     outPlayerName: type === "substitution" ? outPlayerName : "",
+    inPlayerId: type === "substitution" ? inPlayerId : "",
     inPlayerName: type === "substitution" ? inPlayerName : "",
     cardType: type === "yellow" || type === "red" ? type : "",
     rawText: renderedText,
@@ -503,16 +510,16 @@ async function saveDialogEvent(event) {
       result: `${nextScore.our}-${nextScore.their}`
     };
 
-    const updatePayload = {
+    await updateDoc(ref, {
       events,
       score: nextScore,
       result: nextMatch.result,
       updatedAt: serverTimestamp()
-    };
+    });
+
     if (eventAffectsPlayingTime(original) || eventAffectsPlayingTime(nextEvent)) {
-      updatePayload.playingTimeRecalcRequestedAt = new Date().toISOString();
+      await recalculateMatchPlayingTime(activeMatchId);
     }
-    await updateDoc(ref, updatePayload);
     await syncPublicMatch(activeMatchId, nextMatch);
 
     ensureDialog().close();
@@ -559,16 +566,16 @@ async function deleteEventFromRow(row) {
     result: `${nextScore.our}-${nextScore.their}`
   };
 
-  const updatePayload = {
+  await updateDoc(doc(db, "matches", matchId), {
     events,
     score: nextScore,
     result: nextMatch.result,
     updatedAt: serverTimestamp()
-  };
+  });
+
   if (eventAffectsPlayingTime(event)) {
-    updatePayload.playingTimeRecalcRequestedAt = new Date().toISOString();
+    await recalculateMatchPlayingTime(matchId);
   }
-  await updateDoc(doc(db, "matches", matchId), updatePayload);
   await syncPublicMatch(matchId, nextMatch);
   reopenPlayedMatch(matchId);
 }
