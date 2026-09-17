@@ -239,7 +239,6 @@ const HOME_SQUAD = [
   { id: "h14", name: "Sverre" },
   { id: "h15", name: "Thage" },
   { id: "h16", name: "Theodor" },
-  { id: "h17", name: "Torvald" },
  // { id: "h18", name: "William" },
  //{ id: "h19", name: "Lån 1" },
  // { id: "h20", name: "Lånespiller 2" },
@@ -249,6 +248,17 @@ const HOME_SQUAD = [
  // { id: "h24", name: "Lånespiller 6" },
  // { id: "h25", name: "Lånespiller 7" }
 ];
+
+const RETIRED_PLAYER_NAMES = new Set(["torvald"]);
+
+function isRetiredPlayerName(value) {
+  const firstName = String(value || "")
+    .trim()
+    .split(/\s+/)[0]
+    .toLocaleLowerCase("no");
+
+  return RETIRED_PLAYER_NAMES.has(firstName);
+}
 
 const DEFAULT_451_LINEUP = [
   { id: "h15", name: "Thage", x: 50, y: 93 },
@@ -4656,9 +4666,14 @@ async function loadActiveMatch() {
   // Nye kamper som aldri har vært åpnet i lagoppstillingen skal likevel
   // starte med den avtalte 4-5-1-oppstillingen og en ferdig kamptropp.
   const shouldApplyDefaultLineup = !Array.isArray(data.lineup);
-  const effectiveLineup = shouldApplyDefaultLineup
-    ? DEFAULT_451_LINEUP.map(player => ({ ...player }))
-    : data.lineup;
+  const isStoredPreMatch = ["NOT_STARTED", "UPCOMING"].includes(
+    String(data.status || "NOT_STARTED").toUpperCase()
+  );
+  const effectiveLineup = (
+    shouldApplyDefaultLineup
+      ? DEFAULT_451_LINEUP.map(player => ({ ...player }))
+      : data.lineup
+  ).filter(player => !isRetiredPlayerName(player?.name));
 
   matchState.matchId = matchId;
   matchState.meta = {
@@ -4812,6 +4827,7 @@ HOME_SQUAD.forEach(p => {
 if (data.players) {
   Object.entries(data.players).forEach(([id, p]) => {
     if (!p?.name) return;
+    if (isStoredPreMatch && isRetiredPlayerName(p.name)) return;
 
     const firstName = p.name.split(" ")[0].trim().toLowerCase();
 
@@ -4953,8 +4969,22 @@ if (shouldApplyDefaultLineup) {
   }
 } else if (isPreMatch) {
   try {
+    const cleanedSquad = data.squad && typeof data.squad === "object"
+      ? {
+          ...data.squad,
+          ...(Array.isArray(data.squad.present)
+            ? { present: data.squad.present.filter(player => !isRetiredPlayerName(player?.name)) }
+            : {}),
+          ...(Array.isArray(data.squad.starters)
+            ? { starters: data.squad.starters.filter(player => !isRetiredPlayerName(player?.name)) }
+            : {})
+        }
+      : data.squad;
+
     await updateDoc(matchRef, {
       players: matchState.players.home,
+      lineup: effectiveLineup,
+      ...(cleanedSquad ? { squad: cleanedSquad } : {}),
       onField: matchState.squad.onField.home,
       lineupConfirmed: matchState.lineupConfirmed,
       updatedAt: serverTimestamp()
