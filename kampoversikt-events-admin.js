@@ -518,7 +518,7 @@ async function saveDialogEvent(event) {
     });
 
     if (eventAffectsPlayingTime(original) || eventAffectsPlayingTime(nextEvent)) {
-      await recalculateMatchPlayingTime(activeMatchId);
+      await recalculateMatchPlayingTime(activeMatchId, { force: true });
     }
     await syncPublicMatch(activeMatchId, nextMatch);
 
@@ -574,7 +574,7 @@ async function deleteEventFromRow(row) {
   });
 
   if (eventAffectsPlayingTime(event)) {
-    await recalculateMatchPlayingTime(matchId);
+    await recalculateMatchPlayingTime(matchId, { force: true });
   }
   await syncPublicMatch(matchId, nextMatch);
   reopenPlayedMatch(matchId);
