@@ -302,6 +302,12 @@ function scoreAfterChange(score, previousEvent, nextEvent) {
   return next;
 }
 
+function eventAffectsPlayingTime(event) {
+  if (!event) return false;
+  if (event.type === "substitution" || event.type === "sub") return true;
+  return event.type === "card" && event.team === "home" && event.cardType === "red";
+}
+
 function normalizePublicEventType(event) {
   if (event?.type === "yellow" || event?.type === "red" || event?.type === "card") return "card";
   if (event?.type === "sub") return "substitution";
@@ -497,12 +503,16 @@ async function saveDialogEvent(event) {
       result: `${nextScore.our}-${nextScore.their}`
     };
 
-    await updateDoc(ref, {
+    const updatePayload = {
       events,
       score: nextScore,
       result: nextMatch.result,
       updatedAt: serverTimestamp()
-    });
+    };
+    if (eventAffectsPlayingTime(original) || eventAffectsPlayingTime(nextEvent)) {
+      updatePayload.playingTimeRecalcRequestedAt = new Date().toISOString();
+    }
+    await updateDoc(ref, updatePayload);
     await syncPublicMatch(activeMatchId, nextMatch);
 
     ensureDialog().close();
@@ -549,12 +559,16 @@ async function deleteEventFromRow(row) {
     result: `${nextScore.our}-${nextScore.their}`
   };
 
-  await updateDoc(doc(db, "matches", matchId), {
+  const updatePayload = {
     events,
     score: nextScore,
     result: nextMatch.result,
     updatedAt: serverTimestamp()
-  });
+  };
+  if (eventAffectsPlayingTime(event)) {
+    updatePayload.playingTimeRecalcRequestedAt = new Date().toISOString();
+  }
+  await updateDoc(doc(db, "matches", matchId), updatePayload);
   await syncPublicMatch(matchId, nextMatch);
   reopenPlayedMatch(matchId);
 }
