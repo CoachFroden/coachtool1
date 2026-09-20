@@ -60,6 +60,7 @@ onAuthStateChanged(auth, async (user) => {
     const newReplies=playerReplies.filter(d=>{const x=d.data(),stamp=x.createdAt?.seconds||0;return stamp>(seen[d.id]||0)});
     const total=pending.length+open.length+newReplies.length;
     const alert=document.getElementById("playerAlert"),badge=document.getElementById("portalBadge");
+    alert.hidden=true;badge.hidden=true;badge.textContent="0";
     if(total>0){
       const parts=[];if(newReplies.length)parts.push(newReplies.length+" nye svar fra spillere");if(open.length)parts.push(open.length+" aktive forespørsler");if(pending.length)parts.push(pending.length+" kontoer venter");
       document.getElementById("playerAlertText").textContent=parts.join(" · ");
