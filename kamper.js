@@ -393,7 +393,7 @@ async function createMatch(e){
   if(!opponent||!date||!time) return;
   const btn=document.getElementById("saveNewMatch");btn.disabled=true;btn.textContent="Lagrer…";
   try{
-    await addDoc(collection(db,"matches"),{meta:{ourTeam:"Samnanger",opponent,date,time,startTime:time,venueType,venueName,type},lineup:[],players:{},createdAt:serverTimestamp(),createdBy:auth.currentUser?.uid||null});
+    await addDoc(collection(db,"matches"),{meta:{ourTeam:"Samnanger",opponent,date,time,startTime:time,venueType,venueName,type},createdAt:serverTimestamp(),createdBy:auth.currentUser?.uid||null});
     closeNewMatchModal();
     await loadMatches();
   }catch(err){console.error("createMatch:",err);alert("Kunne ikke opprette kampen: "+(err.message||"ukjent feil"))}
@@ -691,6 +691,7 @@ function createPlayerListItem(player) {
 
 el.innerHTML = `
   <span class="player-name">${player.name}</span>
+  <button class="presence-toggle" type="button">${player.present === false ? "Ikke med" : "Med"}</button>
   ${player.isLoan ? '<button class="remove-loan">✕</button>' : ''}
 `;
 
@@ -713,34 +714,25 @@ el.innerHTML = `
     el.style.boxShadow = "0 0 10px rgba(250,204,21,0.7)";
   }
 
-el.onclick = () => {
-  if (isPlayerReadOnly()) return;
-
-  const isAlreadySelected =
-    selectedPlayerName === player.name ||
-    selectedLineupPlayer?.name === player.name;
-
-  // 🔥 Hvis trykker på samme spiller igjen → toggle present
-  if (isAlreadySelected && !player.isLoan) {
-
-    player.present = !player.present;
-
-    if (!player.present) {
-      currentLineup = currentLineup.filter(p => p.name !== player.name);
-    }
-
-    selectedPlayerName = null;
-    selectedLineupPlayer = null;
-
+const presenceBtn = el.querySelector(".presence-toggle");
+if (presenceBtn) {
+  presenceBtn.onclick = async (e) => {
+    e.stopPropagation();
+    if (!canEditLineup()) return;
+    player.present = player.present === false;
+    if (!player.present) currentLineup = currentLineup.filter(p => p.name !== player.name);
+    clearSelections();
     renderPlayerList();
     renderLineup();
-	
-	  saveLineup();
-	  
-    return;
-  }
+    await saveLineup();
+  };
+}
 
-  // 🔥 Vanlig select
+el.onclick = () => {
+  if (!canEditLineup()) return;
+  if (player.present === false) return;
+
+  // Vanlig select
   const existing = currentLineup.find(p => p.name === player.name);
 
   if (existing) {
