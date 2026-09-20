@@ -374,12 +374,12 @@ function openNewMatchModal(){
   document.getElementById("newMatchDate").value=localDateString();
   document.getElementById("newMatchType").value="Seriekamp";
   document.getElementById("newMatchVenueType").value="home";
-  newMatchOverlay.classList.add("open");
+  newMatchOverlay.classList.add("open","show");
   document.body.classList.add("modalOpen");
   setTimeout(()=>document.getElementById("newMatchOpponent").focus(),50);
 }
 function closeNewMatchModal(){
-  newMatchOverlay.classList.remove("open");
+  newMatchOverlay.classList.remove("open","show");
   document.body.classList.remove("modalOpen");
 }
 async function createMatch(e){
