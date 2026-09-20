@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Kamper · Coach</title>
-  <link rel="stylesheet" href="kamper.css?v=20260920-lineupfix4" />
+  <link rel="stylesheet" href="kamper.css?v=20260920-delete1" />
   <link rel="stylesheet" href="lineup-ui.css?v=20260920-lineupfix4" />
   <meta name="theme-color" content="#07111d" />
 </head>
@@ -124,6 +124,9 @@
             <span id="infoModalType"></span>
           </div>
         </div>
+        <div class="infoMatchActions">
+          <button id="deleteMatchBtn" class="deleteMatchBtn" type="button">Slett kamp</button>
+        </div>
       </div>
     </section>
   </div>
@@ -156,7 +159,7 @@
     if (!user) {
       window.location.href = "index.html";
     } else {
-      await import("./kamper.js?v=20260920-lineupfix4");
+      await import("./kamper.js?v=20260920-delete1");
       await import("./lineup-ui.js?v=20260920-lineupfix4");
       await import("./match-admin-links.js?v=20260913-1");
       await import("./kamper-time-consistency.js?v=20260916-2");
