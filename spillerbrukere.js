@@ -34,7 +34,7 @@ document.querySelectorAll(".removeGuardianLink").forEach(b=>b.onclick=manageGuar
 }
 function renderPlayerHub(){
  const root=$("playerHub");if(!root)return;
- root.innerHTML=players.map(p=>{
+ const relevantPlayers=players.filter(p=>accounts.some(a=>a.playerId===p.id)||guardianAccounts.some(g=>(g.playerIds||[]).includes(p.id))||guardianRequests.some(r=>r.playerId===p.id&&r.status==="pending")||allRequests.some(r=>r.playerId===p.id));\n root.innerHTML=relevantPlayers.map(p=>{
   const acc=accounts.find(a=>a.approved&&a.playerId===p.id);
   const gs=guardianAccounts.filter(g=>(g.playerIds||[]).includes(p.id));
   const gr=guardianRequests.filter(r=>r.playerId===p.id&&r.status==="pending");
