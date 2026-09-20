@@ -1120,9 +1120,15 @@ async function loadMatches() {
       const data = docSnap.data();
       const meta = data.meta || {};
 
+      const status = String(data.status || meta.status || "").toUpperCase();
+
+      // Ferdigspilte kamper skal aldri ligge i "Neste kamp" / kampplanen.
+      if (status === "ENDED") return;
+
       matches.push({
         id: docSnap.id,
         ...meta,
+        status,
         time: getMatchTime(meta)
       });
     });
