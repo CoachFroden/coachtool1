@@ -91,3 +91,6 @@
 
 .hubOpenConversation{position:relative}
 .unreadDot{position:absolute;right:-7px;top:-7px;display:flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;border-radius:99px;background:#ef4444;color:#fff;font-size:9px;font-weight:900;box-shadow:0 0 0 2px #0b1c2b}
+
+.shareCommunication{border:1px solid #2f80ed!important;border-radius:12px!important;background:#102b46!important;color:#e8f4ff!important;padding:11px 16px!important;font-weight:800!important;cursor:pointer;box-shadow:inset 0 0 0 1px #ffffff08}
+.shareCommunication:hover{background:#163b60!important;border-color:#58a6ff!important}
