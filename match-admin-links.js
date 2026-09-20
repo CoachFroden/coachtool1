@@ -24,6 +24,11 @@ function matchTime(meta = {}) {
   return String(meta.time || meta.startTime || "").trim();
 }
 
+function isLiveStatus(status) {
+  return ["LIVE","STARTED","IN_PROGRESS","ONGOING","PAUSED","HALFTIME","SECOND_HALF"]
+    .includes(String(status || "").trim().toUpperCase());
+}
+
 async function canManage() {
   const user = auth.currentUser;
   if (!user) return false;
@@ -32,13 +37,15 @@ async function canManage() {
 }
 
 async function loadUpcoming() {
-  const q = query(
-    collection(db, "matches"),
-    where("meta.date", ">=", todayString()),
-    orderBy("meta.date")
-  );
+  const q = query(collection(db, "matches"), where("meta.date", ">=", todayString()), orderBy("meta.date"));
   const snap = await getDocs(q);
-  const matches = snap.docs.map(d => ({ id: d.id, meta: d.data()?.meta || {} }));
+  const matches = snap.docs
+    .map(d => {
+      const data = d.data() || {};
+      return { id: d.id, meta: data.meta || {}, status: data.status || data.meta?.status || "" };
+    })
+    .filter(match => String(match.status).toUpperCase() !== "ENDED");
+
   matches.sort((a, b) => {
     const first = `${a.meta.date || ""}T${matchTime(a.meta) || "00:00"}`;
     const second = `${b.meta.date || ""}T${matchTime(b.meta) || "00:00"}`;
@@ -51,16 +58,19 @@ function editHref(id) {
   return `edit-match.html?source=official&matchId=${encodeURIComponent(id)}`;
 }
 
-function wrapWithEdit(card, matchId) {
+function wrapWithEdit(card, match) {
   if (!card || card.closest(".matchAdminWrap")) return;
   const wrap = document.createElement("div");
   wrap.className = "matchAdminWrap";
   card.parentNode.insertBefore(wrap, card);
   wrap.appendChild(card);
 
+  // Pågående kamp skal åpnes i livevisningen, ikke kunne redigeres her.
+  if (isLiveStatus(match.status)) return;
+
   const edit = document.createElement("a");
   edit.className = "matchEditBtn";
-  edit.href = editHref(matchId);
+  edit.href = editHref(match.id);
   edit.textContent = "Rediger";
   edit.setAttribute("aria-label", "Rediger kamp");
   wrap.appendChild(edit);
@@ -72,12 +82,12 @@ async function enhance() {
   if (!matches.length) return;
 
   const nextCard = document.querySelector("#nextMatch .next-card");
-  if (nextCard) wrapWithEdit(nextCard, matches[0].id);
+  if (nextCard) wrapWithEdit(nextCard, matches[0]);
 
   const laterCards = Array.from(document.querySelectorAll("#matchGrid .match-card"));
   laterCards.forEach((card, index) => {
     const match = matches[index + 1];
-    if (match) wrapWithEdit(card, match.id);
+    if (match) wrapWithEdit(card, match);
   });
 }
 
@@ -87,9 +97,6 @@ const timer = setInterval(async () => {
   const ready = document.querySelector("#nextMatch .next-card") || document.querySelector("#matchGrid .match-card");
   if (!ready && tries < 20) return;
   clearInterval(timer);
-  try {
-    await enhance();
-  } catch (error) {
-    console.warn("Kunne ikke legge til redigeringsknapper", error);
-  }
+  try { await enhance(); }
+  catch (error) { console.warn("Kunne ikke legge til redigeringsknapper", error); }
 }, 150);
