@@ -10,7 +10,8 @@ import {
   orderBy,
   deleteField,
   addDoc,
-  serverTimestamp
+  serverTimestamp,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 /* =========================
@@ -154,6 +155,8 @@ const newMatchOverlay = document.getElementById("newMatchOverlay");
 const newMatchForm = document.getElementById("newMatchForm");
 const closeNewMatch = document.getElementById("closeNewMatch");
 const cancelNewMatch = document.getElementById("cancelNewMatch");
+const deleteMatchBtn = document.getElementById("deleteMatchBtn");
+let infoMatchId = null;
 
 /* =========================
    HELPERS
@@ -591,6 +594,39 @@ function setupModalHandlers() {
   closeInfoModal.onclick = () => {
     infoModalOverlay.classList.remove("show");
   };
+  if (deleteMatchBtn) {
+    deleteMatchBtn.onclick = async () => {
+      if (!infoMatchId || !canEditLineup()) return;
+      const title = infoModalTitle.innerText || "denne kampen";
+      if (!confirm(`Slette ${title} permanent? Kampen fjernes også fra livearkivet.`)) return;
+      deleteMatchBtn.disabled = true;
+      deleteMatchBtn.textContent = "Sletter…";
+      try {
+        await deleteDoc(doc(db, "matches", infoMatchId));
+        await deleteDoc(doc(db, "publicMatches", infoMatchId)).catch(err => {
+          if (err?.code !== "not-found") throw err;
+        });
+        // Hvis denne kampen mot formodning ligger som aktiv livekamp, fjern bare
+        // livepekeren når den faktisk peker på samme kamp.
+        const liveRef = doc(db, "publicMatches", "samnanger-g14-live");
+        const liveSnap = await getDoc(liveRef);
+        if (liveSnap.exists()) {
+          const liveData = liveSnap.data();
+          const liveMatchId = liveData.matchId || liveData.sourceMatchId || liveData.id;
+          if (String(liveMatchId || "") === String(infoMatchId)) await deleteDoc(liveRef);
+        }
+        infoModalOverlay.classList.remove("show");
+        infoMatchId = null;
+        await loadMatches();
+      } catch (err) {
+        console.error("Kunne ikke slette kampen:", err);
+        alert("Kunne ikke slette kampen: " + (err.message || "ukjent feil"));
+      } finally {
+        deleteMatchBtn.disabled = false;
+        deleteMatchBtn.textContent = "Slett kamp";
+      }
+    };
+  }
 
   infoModalOverlay.onclick = (e) => {
     if (e.target === infoModalOverlay) {
@@ -674,6 +710,7 @@ try {
 }
 
 function openInfoModal(match) {
+  infoMatchId = match.id;
   infoModalTitle.innerText = match.opponent || "";
   infoModalDate.innerText = formatDateNorwegian(match.date, match.time);
   infoModalVenue.innerText = match.venueName || "";
