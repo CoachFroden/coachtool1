@@ -152,3 +152,7 @@
   .lineup-group-header{padding:11px 11px 9px}
   #playerList .player-item{min-height:44px;padding:7px 9px}
 }
+
+#playerList .presence-toggle{grid-column:3;min-width:76px;height:32px;padding:0 10px;border-radius:999px;border:1px solid rgba(52,211,153,.30);background:rgba(6,78,59,.22);color:#6ee7b7;font-size:10px;font-weight:850;cursor:pointer;pointer-events:auto}
+#playerList .lineup-absent .presence-toggle{border-color:rgba(148,163,184,.24);background:rgba(30,41,59,.55);color:#a7b3c5}
+#playerList .remove-loan{grid-column:4}
