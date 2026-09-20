@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Kamper · Coach</title>
-  <link rel="stylesheet" href="kamper.css?v=20260920-newmatch3" />
-  <link rel="stylesheet" href="lineup-ui.css?v=20260830-1" />
+  <link rel="stylesheet" href="kamper.css?v=20260920-lineupfix4" />
+  <link rel="stylesheet" href="lineup-ui.css?v=20260920-lineupfix4" />
   <meta name="theme-color" content="#07111d" />
 </head>
 
@@ -134,7 +134,7 @@
       <form id="newMatchForm" class="newMatchForm">
         <label>Motstander<input id="newMatchOpponent" required autocomplete="off" placeholder="F.eks. Austevoll 2"></label>
         <div class="formRow"><label>Dato<input id="newMatchDate" type="date" required></label><label>Tid<input id="newMatchTime" type="time" required></label></div>
-        <div class="formRow"><label>Hjemme / borte<select id="newMatchVenueType"><option value="home">Hjemmekamp</option><option value="away">Bortekamp</option></select></label><label>Kamp-type<input id="newMatchType" value="Seriekamp" placeholder="Seriekamp"></label></div>
+        <div class="formRow"><label>Hjemme / borte<select id="newMatchVenueType"><option value="home">Hjemmekamp</option><option value="away">Bortekamp</option></select></label><label>Kamp-type<select id="newMatchType"><option value="Seriekamp">Seriekamp</option><option value="Cupkamp">Cupkamp</option><option value="Treningskamp">Treningskamp</option></select></label></div>
         <label>Sted / bane<input id="newMatchVenue" autocomplete="off" placeholder="F.eks. Hagabotnane"></label>
         <div class="newMatchActions"><button id="cancelNewMatch" type="button" class="secondary">Avbryt</button><button id="saveNewMatch" type="submit" class="primary">Opprett kamp</button></div>
       </form>
@@ -156,8 +156,8 @@
     if (!user) {
       window.location.href = "index.html";
     } else {
-      await import("./kamper.js?v=20260920-newmatch3");
-      await import("./lineup-ui.js?v=20260830-1");
+      await import("./kamper.js?v=20260920-lineupfix4");
+      await import("./lineup-ui.js?v=20260920-lineupfix4");
       await import("./match-admin-links.js?v=20260913-1");
       await import("./kamper-time-consistency.js?v=20260916-2");
     }
