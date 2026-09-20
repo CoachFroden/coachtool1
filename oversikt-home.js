@@ -126,6 +126,16 @@ function typeLabel(type) {
   return "Kamp";
 }
 
+function isActiveMatch(match) {
+  return ["LIVE","TEMP_STOPPED","HALFTIME","PAUSED"].includes(String(match?.status || "").toUpperCase());
+}
+function activeStatusLabel(match) {
+  const status=String(match?.status || "").toUpperCase();
+  if(status==="HALFTIME") return "PAUSE";
+  if(status==="TEMP_STOPPED" || status==="PAUSED") return "MIDLERTIDIG STOPPET";
+  return "KAMP PÅGÅR";
+}
+
 function countdown(match) {
   const when = dateValue(match);
   if (!Number.isFinite(when)) return "";
@@ -159,10 +169,13 @@ function renderNext(match) {
   els.nextOpponent.textContent = meta.opponent || "Ukjent motstander";
   els.nextMeta.textContent = `${typeLabel(meta.type)} · ${formatDate(meta.date)}${meta.time ? ` kl. ${meta.time}` : ""}`;
   els.nextVenue.textContent = venueLabel(meta);
-  els.nextCountdown.textContent = countdown(match);
+  const active=isActiveMatch(match);
+  els.nextCountdown.textContent = active ? activeStatusLabel(match) : countdown(match);
+  els.nextCountdown.classList.toggle("live",active);
   els.lineupBtn.disabled = false;
   els.lineupBtn.onclick = () => window.location.href = `kamper.html?matchId=${encodeURIComponent(match.id)}&openLineup=true`;
-  els.startMatchBtn.textContent = "Åpne kamp";
+  els.startMatchBtn.textContent = active ? "Fortsett kamp" : "Åpne kamp";
+  els.startMatchBtn.classList.toggle("live",active);
   els.startMatchBtn.onclick = () => window.location.href = `kamp.html?matchId=${encodeURIComponent(match.id)}`;
 }
 
@@ -228,11 +241,15 @@ async function initForUser(user) {
     await cleanupDuplicateStartEvents(matches);
   }
 
-  const upcoming = matches.filter(m => String(m.status || "").toUpperCase() !== "ENDED").sort((a,b) => dateValue(a) - dateValue(b));
+  const notEnded = matches.filter(m => String(m.status || "").toUpperCase() !== "ENDED");
+  const active = notEnded.filter(isActiveMatch).sort((a,b) => dateValue(a) - dateValue(b));
+  const scheduled = notEnded.filter(m => !isActiveMatch(m)).sort((a,b) => dateValue(a) - dateValue(b));
   const played = matches.filter(m => String(m.status || "").toUpperCase() === "ENDED").sort((a,b) => dateValue(b) - dateValue(a));
+  const heroMatch = active[0] || scheduled[0] || null;
+  const remaining = heroMatch ? notEnded.filter(m => m.id !== heroMatch.id).sort((a,b) => dateValue(a)-dateValue(b)) : [];
 
-  renderNext(upcoming[0]);
-  renderUpcoming(upcoming.slice(1));
+  renderNext(heroMatch);
+  renderUpcoming(remaining);
   renderLast(played[0]);
 }
 
