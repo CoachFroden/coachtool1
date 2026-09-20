@@ -1116,23 +1116,22 @@ async function loadMatches() {
   gridDiv.innerHTML = "";
 
   try {
-    const q = query(
-      collection(db, "matches"),
-      where("meta.date", ">=", today),
-      orderBy("meta.date")
-    );
-
-    const snap = await getDocs(q);
+    // Hent alle kampene slik at en kamp som fortsatt er LIVE ikke forsvinner
+    // bare fordi kampdatoen er passert.
+    const snap = await getDocs(collection(db, "matches"));
     const matches = [];
 
     snap.forEach((docSnap) => {
       const data = docSnap.data();
       const meta = data.meta || {};
-
-      const status = String(data.status || meta.status || "").toUpperCase();
+      const status = String(data.status || meta.status || "").trim().toUpperCase();
+      const live = isLiveMatchStatus(status);
 
       // Ferdigspilte kamper skal aldri ligge i "Neste kamp" / kampplanen.
       if (status === "ENDED") return;
+
+      // Vis alltid pågående kamp. Ellers bare dagens/fremtidige kamper.
+      if (!live && String(meta.date || "") < today) return;
 
       matches.push({
         id: docSnap.id,
@@ -1143,6 +1142,10 @@ async function loadMatches() {
     });
 
     matches.sort((a, b) => {
+      const aLive = isLiveMatchStatus(a.status);
+      const bLive = isLiveMatchStatus(b.status);
+      if (aLive !== bLive) return aLive ? -1 : 1;
+
       const first = `${a.date || ""}T${getMatchTime(a) || "00:00"}`;
       const second = `${b.date || ""}T${getMatchTime(b) || "00:00"}`;
       return first.localeCompare(second);
