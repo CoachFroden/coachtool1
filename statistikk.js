@@ -23,7 +23,6 @@ const esc = value => String(value ?? "")
 function getPlayer(map, id, name) {
   const cleanName = String(name || "").trim();
   if (!cleanName) return null;
-  if (norm(cleanName) === "torvald") return null;
   const idKey = id ? String(id) : "";
   if (idKey && map.has(idKey)) return map.get(idKey);
   for (const row of map.values()) if (norm(row.name) === norm(cleanName)) return row;
