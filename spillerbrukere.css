@@ -88,3 +88,6 @@
 .coachComposerActions{display:flex;justify-content:flex-end;gap:8px;margin-top:9px}.coachComposerActions button{padding:9px 13px;border-radius:9px;font-weight:800;cursor:pointer}.coachComposerActions .send{background:#1877e8;color:#fff}.coachComposerActions .resolve{background:#263b4e;color:#dce9f4}
 .replyTarget{display:flex;justify-content:space-between;gap:10px;margin-bottom:9px;padding:8px 10px;border-left:3px solid #3b9cff;border-radius:7px;background:#071522}.replyTarget small{color:#67b2ff;font-size:8px;font-weight:900}.replyTarget p{margin:3px 0 0;font-size:10px;color:#b9cad8}.replyTarget button{background:transparent;border:0;color:#a9bfd0;font-size:18px;cursor:pointer}
 .archiveItem.player.replyable{cursor:pointer}.archiveItem.player.replyable:hover{outline:1px solid #35b87b66}
+
+.hubOpenConversation{position:relative}
+.unreadDot{position:absolute;right:-7px;top:-7px;display:flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;border-radius:99px;background:#ef4444;color:#fff;font-size:9px;font-weight:900;box-shadow:0 0 0 2px #0b1c2b}
