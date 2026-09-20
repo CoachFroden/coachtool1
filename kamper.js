@@ -8,7 +8,9 @@ import {
   query,
   where,
   orderBy,
-  deleteField 
+  deleteField,
+  addDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 /* =========================
@@ -147,6 +149,11 @@ const closeInfoModal = document.getElementById("closeInfoModal");
 const pitch = document.getElementById("pitch");
 const playerListDiv = document.getElementById("playerList");
 const removePlayerBtn = document.getElementById("removePlayerBtn");
+const newMatchBtn = document.getElementById("newMatchBtn");
+const newMatchOverlay = document.getElementById("newMatchOverlay");
+const newMatchForm = document.getElementById("newMatchForm");
+const closeNewMatch = document.getElementById("closeNewMatch");
+const cancelNewMatch = document.getElementById("cancelNewMatch");
 
 /* =========================
    HELPERS
@@ -360,6 +367,38 @@ function setupLoanPlayerUI() {
   });
 }
 
+
+function openNewMatchModal(){
+  if(!canEditLineup()) return;
+  newMatchForm.reset();
+  document.getElementById("newMatchDate").value=localDateString();
+  document.getElementById("newMatchType").value="Seriekamp";
+  document.getElementById("newMatchVenueType").value="home";
+  newMatchOverlay.classList.add("open");
+  document.body.classList.add("modalOpen");
+  setTimeout(()=>document.getElementById("newMatchOpponent").focus(),50);
+}
+function closeNewMatchModal(){
+  newMatchOverlay.classList.remove("open");
+  document.body.classList.remove("modalOpen");
+}
+async function createMatch(e){
+  e.preventDefault();
+  const opponent=document.getElementById("newMatchOpponent").value.trim();
+  const date=document.getElementById("newMatchDate").value;
+  const time=document.getElementById("newMatchTime").value;
+  const venueType=document.getElementById("newMatchVenueType").value;
+  const venueName=document.getElementById("newMatchVenue").value.trim();
+  const type=document.getElementById("newMatchType").value.trim()||"Seriekamp";
+  if(!opponent||!date||!time) return;
+  const btn=document.getElementById("saveNewMatch");btn.disabled=true;btn.textContent="Lagrer…";
+  try{
+    await addDoc(collection(db,"matches"),{meta:{ourTeam:"Samnanger",opponent,date,time,startTime:time,venueType,venueName,type},lineup:[],players:{},createdAt:serverTimestamp(),createdBy:auth.currentUser?.uid||null});
+    closeNewMatchModal();
+    await loadMatches();
+  }catch(err){console.error("createMatch:",err);alert("Kunne ikke opprette kampen: "+(err.message||"ukjent feil"))}
+  finally{btn.disabled=false;btn.textContent="Opprett kamp"}
+}
 /* =========================
    FIRESTORE
 ========================= */
@@ -1270,3 +1309,10 @@ window.goBack = function () {
     window.location.href = "fremside.html";
   }
 };
+
+if(newMatchBtn)newMatchBtn.addEventListener("click",openNewMatchModal);
+if(closeNewMatch)closeNewMatch.addEventListener("click",closeNewMatchModal);
+if(cancelNewMatch)cancelNewMatch.addEventListener("click",closeNewMatchModal);
+if(newMatchForm)newMatchForm.addEventListener("submit",createMatch);
+if(newMatchOverlay)newMatchOverlay.addEventListener("click",e=>{if(e.target===newMatchOverlay)closeNewMatchModal()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&newMatchOverlay?.classList.contains("open"))closeNewMatchModal()});
