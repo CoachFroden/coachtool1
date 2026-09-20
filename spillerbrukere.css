@@ -73,3 +73,10 @@
 .hubAccountActions{grid-column:1/-1;display:flex;gap:7px}.hubAccountActions button,.hubConversationActions button,.hubGuardianRow button,.hubPendingGuardian button{border-radius:9px;padding:7px 9px;font-size:10px;font-weight:800;cursor:pointer}.hubAccountActions .communication,.hubConversationActions .communication{padding:7px 9px}
 .hubConversationActions{display:flex;gap:7px;margin-top:10px}.hubEmpty{margin:0;color:#6f879c;font-size:11px}.hubWarn{color:#fbbf24}.hubAttention{border-color:#6b4c18!important;background:#171407!important}
 @media(max-width:760px){.playerHubCard>summary{grid-template-columns:1fr auto 24px}.playerHubStats{grid-column:1/-1;grid-row:2}.hubNeeds,.playerHubCard>summary>.badge{grid-column:2;grid-row:1}.playerHubCard>summary>.guardianChevron{grid-column:3;grid-row:1}.hubAccountRow,.hubGuardianRow,.hubPendingGuardian,.hubConversation{grid-template-columns:1fr auto}.hubAccountActions{display:grid;grid-template-columns:1fr}.hubConversationActions{display:grid;grid-template-columns:1fr}}
+
+.guardianRemoveModal{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;background:#020914b8;backdrop-filter:blur(4px)}
+.guardianRemoveModal.open{display:flex}
+.guardianRemoveDialog{width:min(520px,100%);display:grid;grid-template-columns:54px 1fr;gap:16px;padding:22px;border:1px solid #28435a;border-radius:18px;background:#0d2133;box-shadow:0 24px 70px #0008}
+.guardianRemoveIcon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#ef444420;font-size:22px}
+.guardianRemoveDialog h3{margin:2px 0 7px;font-size:18px}.guardianRemoveDialog p{margin:0;color:#b7c9d9;font-size:13px;line-height:1.5}
+.guardianRemoveActions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.guardianRemoveActions button{padding:10px 15px;border-radius:10px;font-weight:800;cursor:pointer}.guardianRemoveActions .danger{background:#dc3030;color:white;border-color:#ef4444}
