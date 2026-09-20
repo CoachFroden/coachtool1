@@ -328,17 +328,22 @@ if (modal && list) {
     }
   }
 
+  let renderQueued = false;
   const scheduleRender = () => {
-    if (modal.classList.contains("hidden")) return;
-    requestAnimationFrame(renderSquadGroups);
+    if (modal.classList.contains("hidden") || rendering || renderQueued) return;
+    renderQueued = true;
+    requestAnimationFrame(() => {
+      renderQueued = false;
+      renderSquadGroups();
+    });
   };
 
+  // Render when the modal opens. Do not observe #squadList childList:
+  // renderSquadGroups itself moves/replaces rows, which otherwise creates an observer loop.
   new MutationObserver(scheduleRender).observe(modal, {
     attributes: true,
     attributeFilter: ["class"]
   });
-
-  new MutationObserver(scheduleRender).observe(list, { childList: true });
 
   document.addEventListener("click", (event) => {
     if (!modal.contains(event.target)) return;
