@@ -101,6 +101,10 @@ function ensureSquadStatusStyles() {
       font-size: 10px;
       font-weight: 800;
       white-space: nowrap;
+      cursor: pointer;
+      pointer-events: auto !important;
+      position: relative;
+      z-index: 31;
     }
     #squadModal .squad-status-button::after {
       content: "▾";
@@ -126,7 +130,8 @@ function ensureSquadStatusStyles() {
       position: absolute;
       right: 0;
       top: 40px;
-      z-index: 30;
+      z-index: 9999;
+      pointer-events: auto !important;
       width: 154px;
       padding: 6px;
       border: 1px solid rgba(148,163,184,.20);
