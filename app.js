@@ -1481,10 +1481,11 @@ function updateControls() {
   endBtn.style.display = "none";
 
 if (
-  ["NOT_STARTED", "UPCOMING"].includes(matchState.status) &&
-  matchState.lineupConfirmed
+  ["NOT_STARTED", "UPCOMING", "SCHEDULED", "PREMATCH", ""].includes(String(matchState.status || "").toUpperCase())
 ) {
   startBtn.style.display = "block";
+  startBtn.disabled = !matchState.lineupConfirmed;
+  startBtn.textContent = matchState.lineupConfirmed ? "Start kamp" : "Velg 11 startere først";
 }
 
   if (matchState.status === "LIVE") {
@@ -1536,9 +1537,15 @@ function updateUIByStatus() {
 
   startScreen.style.display = "none";
 
-  if (matchState.status === "NOT_STARTED") {
+  if (["NOT_STARTED", "SCHEDULED", "PREMATCH", ""].includes(String(matchState.status || "").toUpperCase())) {
     preMatch.classList.remove("hidden");
-    matchUI.classList.add("hidden");
+    matchUI.classList.remove("hidden");
+    teams.style.display = "flex";
+    actionCard.style.display = "none";
+    goalActions.style.display = "none";
+    clockSection.style.display = "none";
+    matchControls.style.display = "block";
+    eventLog.style.display = "none";
   }
 
   if (matchState.status === "UPCOMING") {
