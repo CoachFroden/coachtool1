@@ -1,4 +1,4 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentWritten, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
@@ -1107,4 +1107,124 @@ ${reflectionHistory}
 
   }
 
+});
+
+
+/* =====================================================
+   FORESATTINVITASJONER
+   Sikker flyt: godkjent spiller -> trener -> e-post -> låst e-post
+===================================================== */
+
+function normalizeInviteEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+async function requireCoach(uid) {
+  if (!uid) throw new HttpsError("unauthenticated", "Du må være logget inn.");
+  const snap = await db.collection("users").doc(uid).get();
+  if (!snap.exists || snap.data().role !== "coach") {
+    throw new HttpsError("permission-denied", "Kun trener kan godkjenne foresatte.");
+  }
+}
+
+exports.approveGuardianInvite = onCall({
+  region: "europe-west1",
+  timeoutSeconds: 30
+}, async request => {
+  await requireCoach(request.auth?.uid);
+  const requestId = String(request.data?.requestId || "");
+  if (!requestId) throw new HttpsError("invalid-argument", "Forespørsel mangler.");
+
+  const ref = db.collection("guardianRequests").doc(requestId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Forespørselen finnes ikke.");
+  const data = snap.data();
+  if (data.status !== "pending") {
+    throw new HttpsError("failed-precondition", "Forespørselen er allerede behandlet.");
+  }
+
+  const token = require("crypto").randomBytes(32).toString("hex");
+  const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await ref.update({
+    status: "approved",
+    inviteToken: token,
+    inviteExpiresAt: expiresAt,
+    inviteUsed: false,
+    approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+    approvedBy: request.auth.uid
+  });
+
+  const inviteUrl = `https://coachfroden.github.io/spillerportal/?guardianInvite=${encodeURIComponent(token)}`;
+  return { inviteUrl, email: normalizeInviteEmail(data.guardianEmail), guardianName: data.guardianName || "Foresatt" };
+});
+
+exports.getGuardianInvite = onCall({
+  region: "europe-west1",
+  timeoutSeconds: 30
+}, async request => {
+  const token = String(request.data?.token || "");
+  if (!token) throw new HttpsError("invalid-argument", "Invitasjon mangler.");
+  const qs = await db.collection("guardianRequests").where("inviteToken", "==", token).limit(1).get();
+  if (qs.empty) throw new HttpsError("not-found", "Invitasjonen finnes ikke.");
+  const snap = qs.docs[0], data = snap.data();
+  if (data.status !== "approved" || data.inviteUsed) throw new HttpsError("failed-precondition", "Invitasjonen er ikke lenger gyldig.");
+  if (!data.inviteExpiresAt || data.inviteExpiresAt.toMillis() < Date.now()) throw new HttpsError("deadline-exceeded", "Invitasjonen har utløpt.");
+  return {
+    requestId: snap.id,
+    email: normalizeInviteEmail(data.guardianEmail),
+    guardianName: data.guardianName || "",
+    playerName: data.playerName || ""
+  };
+});
+
+exports.claimGuardianInvite = onCall({
+  region: "europe-west1",
+  timeoutSeconds: 30
+}, async request => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Du må være logget inn.");
+  const token = String(request.data?.token || "");
+  if (!token) throw new HttpsError("invalid-argument", "Invitasjon mangler.");
+
+  const authUser = await admin.auth().getUser(uid);
+  const signedInEmail = normalizeInviteEmail(authUser.email);
+  if (!signedInEmail) throw new HttpsError("failed-precondition", "Kontoen mangler e-postadresse.");
+
+  const qs = await db.collection("guardianRequests").where("inviteToken", "==", token).limit(1).get();
+  if (qs.empty) throw new HttpsError("not-found", "Invitasjonen finnes ikke.");
+  const reqRef = qs.docs[0].ref;
+
+  await db.runTransaction(async tx => {
+    const fresh = await tx.get(reqRef);
+    const data = fresh.data();
+    if (!data || data.status !== "approved" || data.inviteUsed) throw new HttpsError("failed-precondition", "Invitasjonen er allerede brukt eller ugyldig.");
+    if (!data.inviteExpiresAt || data.inviteExpiresAt.toMillis() < Date.now()) throw new HttpsError("deadline-exceeded", "Invitasjonen har utløpt.");
+    const invitedEmail = normalizeInviteEmail(data.guardianEmail);
+    if (signedInEmail !== invitedEmail) throw new HttpsError("permission-denied", "Denne invitasjonen tilhører en annen e-postadresse.");
+
+    const guardianRef = db.collection("guardianAccounts").doc(uid);
+    const guardianSnap = await tx.get(guardianRef);
+    const existing = guardianSnap.exists ? guardianSnap.data() : {};
+    const ids = Array.from(new Set([...(Array.isArray(existing.playerIds) ? existing.playerIds : []), data.playerId]));
+
+    tx.set(guardianRef, {
+      name: data.guardianName || existing.name || authUser.displayName || "",
+      email: invitedEmail,
+      approved: true,
+      playerIds: ids,
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+      approvedBy: data.approvedBy || null,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      ...(guardianSnap.exists ? {} : { createdAt: admin.firestore.FieldValue.serverTimestamp() })
+    }, { merge: true });
+
+    tx.update(reqRef, {
+      inviteUsed: true,
+      inviteUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+      guardianUid: uid,
+      status: "claimed"
+    });
+  });
+
+  return { success: true };
 });
