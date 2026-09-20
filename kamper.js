@@ -232,6 +232,15 @@ function escapeHtml(value) {
   return element.innerHTML;
 }
 
+function isLiveMatchStatus(status) {
+  const normalized = String(status || "").trim().toUpperCase();
+  return ["LIVE", "STARTED", "IN_PROGRESS", "ONGOING", "PAUSED", "HALFTIME", "SECOND_HALF"].includes(normalized);
+}
+
+function openLiveMatch(matchId) {
+  window.location.href = `kamp-live.html?matchId=${encodeURIComponent(matchId)}&app=1`;
+}
+
 function localDateString() {
   const now = new Date();
   const year = now.getFullYear();
@@ -1160,11 +1169,12 @@ async function loadMatches() {
     const nextTime = getMatchTime(next) || "Ikke satt";
     const nextVenue = next.venueName || "Sted ikke satt";
     const nextIsAway = next.venueType === "away";
+    const nextIsLive = isLiveMatchStatus(next.status);
 
     nextDiv.innerHTML = `
       <button class="next-card" type="button" aria-label="Åpne lagoppstillingen mot ${escapeHtml(next.opponent || "motstander")}">
         <div class="nextCardTop">
-          <span class="nextLabel">NESTE KAMP</span>
+          <span class="nextLabel">${nextIsLive ? "PÅGÅR" : "NESTE KAMP"}</span>
           <span class="venueBadge ${nextIsAway ? "away" : ""}">
             ${nextIsAway ? "Bortekamp" : "Hjemmekamp"}
           </span>
@@ -1198,13 +1208,16 @@ async function loadMatches() {
         </div>
 
         <div class="nextAction">
-          <span>Åpne lagoppstilling</span>
+          <span>${nextIsLive ? "Åpne kamp" : "Åpne lagoppstilling"}</span>
           <span aria-hidden="true">→</span>
         </div>
       </button>
     `;
 
-    nextDiv.querySelector(".next-card").onclick = () => openPitchModal(next);
+    nextDiv.querySelector(".next-card").onclick = () => {
+      if (nextIsLive) openLiveMatch(next.id);
+      else openPitchModal(next);
+    };
 
     const laterMatches = matches.slice(1);
     if (matchCount) {
@@ -1226,6 +1239,7 @@ async function loadMatches() {
       const time = getMatchTime(match) || "–";
       const location = match.venueName || "Sted ikke satt";
       const type = match.venueType === "away" ? "Bortekamp" : "Hjemmekamp";
+      const matchIsLive = isLiveMatchStatus(match.status);
 
       const button = document.createElement("button");
       button.type = "button";
@@ -1246,7 +1260,10 @@ async function loadMatches() {
         </span>
       `;
 
-      button.onclick = () => openInfoModal(match);
+      button.onclick = () => {
+        if (matchIsLive) openLiveMatch(match.id);
+        else openInfoModal(match);
+      };
       gridDiv.appendChild(button);
     });
   } catch (error) {
