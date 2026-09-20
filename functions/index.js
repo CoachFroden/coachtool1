@@ -9,7 +9,7 @@ const { OpenAI } = require("openai");
 admin.initializeApp();
 const db = admin.firestore();
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
-const GUARDIAN_EMAIL_FROM = "Samnanger G14 <onboarding@resend.dev>";
+const GUARDIAN_EMAIL_FROM = "Samnanger G14 <spillerportal@vibliz.com>";
 
 const MATCH_REMINDER_STATUSES = [
   "NOT_STARTED",
