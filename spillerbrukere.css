@@ -29,3 +29,11 @@
 
 .conversationHeadActions{display:flex;align-items:center;gap:8px}.editConversationTitle{border:1px solid #31516f;background:#0d2031;color:#9fc5e8;border-radius:9px;padding:6px 8px;font-size:9px;font-weight:900;cursor:pointer}.archiveConversationHead{flex-wrap:wrap}.archiveConversationHead .archiveTitleBlock{display:grid;grid-template-columns:auto auto;align-items:center;gap:4px 8px}.archiveTitleBlock strong{font-size:13px}.archiveTitleBlock small{grid-row:2;color:#7f93a8;font-size:9px}.archiveTitleBlock .archiveStatus{grid-column:2;grid-row:1/3}.archiveEditTitle{margin-left:auto}
 .approveParent{border:0;border-radius:12px;background:#2563eb;color:white;font-weight:800;padding:11px 13px;cursor:pointer}.guardianControls{display:grid;grid-template-columns:1fr auto auto;gap:8px}.approveGuardian{border:0;border-radius:12px;background:#2563eb;color:white;font-weight:800;padding:11px 13px;cursor:pointer}@media(max-width:650px){.guardianControls{grid-template-columns:1fr}.guardianControls button{width:100%}}.deleteConversation{border:1px solid #7f1d1d!important;background:#2a1014!important;color:#fca5a5!important}.deleteConversation:hover{background:#45151b!important;color:#fff!important}.deleteConversation:disabled{opacity:.55;cursor:wait}
+.accountTypeTag{display:inline-flex;align-items:center;gap:5px;margin-bottom:9px;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:900;letter-spacing:.08em}
+.accountTypeTag.playerType{background:#2563eb1c;border:1px solid #3b82f64a;color:#93c5fd}
+.accountTypeTag.guardianType{background:#10b98118;border:1px solid #10b98145;color:#6ee7b7}
+.accountHelp{margin:5px 0 10px;color:#7895b2;font-size:11px}
+.pendingControls{grid-template-columns:minmax(180px,1fr) auto auto}
+.rejectAccount{border:1px solid #7f1d1d;border-radius:12px;background:#2a1014;color:#fca5a5;font-weight:800;padding:11px 13px;cursor:pointer}
+.rejectAccount:hover{background:#45151b;color:#fff}
+@media(max-width:700px){.pendingControls{grid-template-columns:1fr}.pendingControls button{width:100%}}
