@@ -3362,7 +3362,7 @@ function openSquadModal() {
   }
 
   isSquadModalOpen = true;
-	const squadLocked = !["NOT_STARTED", "UPCOMING"].includes(matchState.status);
+	const squadLocked = !["NOT_STARTED", "UPCOMING", "SCHEDULED", "PREMATCH", ""].includes(String(matchState.status || "").toUpperCase());
   const list = document.getElementById("squadList");
   list.innerHTML = "";
   
@@ -3786,7 +3786,7 @@ async function syncLineupWithSquad() {
 
 document.getElementById("saveSquadBtn").addEventListener("click", async () => {
 
-  if (!["NOT_STARTED", "UPCOMING"].includes(matchState.status)) {
+  if (!["NOT_STARTED", "UPCOMING", "SCHEDULED", "PREMATCH", ""].includes(String(matchState.status || "").toUpperCase())) {
     return;
   }
 
