@@ -162,7 +162,7 @@ function renderNext(match) {
   els.nextCountdown.textContent = countdown(match);
   els.lineupBtn.disabled = false;
   els.lineupBtn.onclick = () => window.location.href = `kamper.html?matchId=${encodeURIComponent(match.id)}&openLineup=true`;
-  els.startMatchBtn.textContent = "Start kamp";
+  els.startMatchBtn.textContent = "Åpne kamp";
   els.startMatchBtn.onclick = () => window.location.href = `kamp.html?matchId=${encodeURIComponent(match.id)}`;
 }
 
