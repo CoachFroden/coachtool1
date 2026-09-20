@@ -96,3 +96,5 @@
 .shareCommunication:hover{background:#163b60!important;border-color:#58a6ff!important}
 
 .hubCommunicationSection{border-color:#244866!important;background:linear-gradient(145deg,#0b1d2c,#081622)!important}.hubCommunicationSection h4{color:#9dc8ea}.hubAccountActions{grid-column:auto;display:flex;justify-content:flex-end}.hubAccountActions .danger{white-space:nowrap}.hubConversationActions{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid #173047}.hubConversationActions .communication{background:#12314a;border-color:#315f7f}@media(max-width:760px){.hubAccountActions{grid-column:1/-1;justify-content:flex-start}.hubConversationActions{display:grid;grid-template-columns:1fr 1fr}}
+
+.startCoachConversation{background:#0f5132!important;border-color:#1d7a4d!important;color:#d9ffe9!important;font-weight:800}.startCoachConversation:hover{background:#14663f!important}
