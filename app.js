@@ -2720,13 +2720,19 @@ function closePlayingIntervalsAt(finalTimeMs) {
 
 async function finishMatchAt(finalMinute) {
   const finalTimeMs = finalMinute.totalMinutes * 60 * 1000;
-  const latestEventTimeMs = Math.max(
+
+  // Bare faktiske kamphendelser skal kunne begrense sluttiden.
+  // Systemhendelser som klokkejustering, pause/start og statusmeldinger
+  // kan ha timeMs fra før/etter en manuell klokkejustering og skal ikke blokkere kampslutt.
+  const latestMatchEventTimeMs = Math.max(
     0,
-    ...matchState.events.map(event => Number(event?.timeMs) || 0)
+    ...matchState.events
+      .filter(event => ["goal", "substitution", "card"].includes(event?.type))
+      .map(event => Number(event?.timeMs) || 0)
   );
 
-  if (finalTimeMs < latestEventTimeMs) {
-    alert("Sluttminuttet kan ikke være før den siste registrerte hendelsen.");
+  if (finalTimeMs < latestMatchEventTimeMs) {
+    alert("Sluttminuttet kan ikke være før den siste registrerte kamphendelsen. Rediger hendelsen først.");
     return;
   }
 
