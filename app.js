@@ -4733,7 +4733,20 @@ awayTeamInput.value =
   dateInput.value = matchState.meta.date || "";
   timeInput.value = matchState.meta.startTime || matchState.meta.time || "";
   halfLengthInput.value = matchState.meta.halfLengthMin || 35;
-  matchTypeInput.value = matchState.meta.type || "league";
+  {
+    const rawType = String(matchState.meta.type || "league").trim().toLowerCase();
+    const typeMap = {
+      "league": "league",
+      "seriekamp": "league",
+      "serie": "league",
+      "cup": "cup",
+      "cupkamp": "cup",
+      "friendly": "friendly",
+      "treningskamp": "friendly",
+      "trening": "friendly"
+    };
+    matchTypeInput.value = typeMap[rawType] || "league";
+  }
   
   console.log("VENUE FRA FIRESTORE:", matchState.meta.venue);
 
