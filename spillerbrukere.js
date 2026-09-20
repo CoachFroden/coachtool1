@@ -41,7 +41,13 @@ function renderPlayerHub(){
   const gr=guardianRequests.filter(r=>r.playerId===p.id&&r.status==="pending");
   const open=requests.filter(r=>r.playerId===p.id||(acc&&r.uid===acc.uid));
   const archiveCount=allRequests.filter(r=>(r.playerId===p.id||(acc&&r.uid===acc.uid))&&r.status!=="open").length;
-  const needs=(!acc?1:0)+gr.length+open.length;
+  const pendingPlayerApproval=accounts.some(a=>!a.approved&&!a.rejected&&a.playerId===p.id)?1:0;
+  const unansweredPlayerMessages=open.filter(r=>{
+    const thread=messages.filter(m=>m.requestId===r.id).sort((a,b)=>ts(a.createdAt)-ts(b.createdAt));
+    if(thread.length)return thread[thread.length-1].senderRole!=="coach";
+    return true;
+  }).length;
+  const needs=pendingPlayerApproval+gr.length+unansweredPlayerMessages;
   const guardianHtml=gs.length?gs.map(g=>'<div class="hubGuardianRow"><div><strong>'+esc(g.name||"Foresatt")+'</strong><span>'+esc(g.email||"")+'</span></div><span class="badge '+(g.approved?"ok":"")+'">'+(g.approved?"AKTIV":"VENTER")+'</span><button class="removeGuardianLink danger" data-guardian="'+g.uid+'">Koblinger</button></div>').join(""):'<p class="hubEmpty">Ingen aktive foresatte.</p>';
   const requestHtml=gr.length?gr.map(r=>'<div class="hubPendingGuardian"><div><strong>'+esc(r.guardianName||"Foresatt")+'</strong><span>'+esc(r.guardianEmail||"")+'</span></div><button class="approveGuardianRequest" data-request="'+r.id+'">Godkjenn</button><button class="rejectGuardianRequest danger" data-request="'+r.id+'">Avvis</button></div>').join(""):'<p class="hubEmpty">Ingen foresattforespørsler venter.</p>';
   const conversationHtml=open.length?open.map(r=>'<div class="hubConversation"><div><strong>'+esc(r.title||"Utviklingssamtale")+'</strong><span>'+esc(dateText(r.createdAt))+'</span></div><span class="badge">AKTIV</span></div>').join(""):'<p class="hubEmpty">Ingen aktive samtaler.</p>';
