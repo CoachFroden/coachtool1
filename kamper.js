@@ -369,7 +369,7 @@ function setupLoanPlayerUI() {
 
 
 function openNewMatchModal(){
-  if(!canEditLineup()) return;
+  if(userRole && !canEditLineup()) return;
   newMatchForm.reset();
   document.getElementById("newMatchDate").value=localDateString();
   document.getElementById("newMatchType").value="Seriekamp";
@@ -1227,6 +1227,13 @@ async function loadMatches() {
   }
 }
 
+if(newMatchBtn)newMatchBtn.addEventListener("click",openNewMatchModal);
+if(closeNewMatch)closeNewMatch.addEventListener("click",closeNewMatchModal);
+if(cancelNewMatch)cancelNewMatch.addEventListener("click",closeNewMatchModal);
+if(newMatchForm)newMatchForm.addEventListener("submit",createMatch);
+if(newMatchOverlay)newMatchOverlay.addEventListener("click",e=>{if(e.target===newMatchOverlay)closeNewMatchModal()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&newMatchOverlay?.classList.contains("open"))closeNewMatchModal()});
+
 /* =========================
    INIT
 ========================= */
@@ -1310,9 +1317,3 @@ window.goBack = function () {
   }
 };
 
-if(newMatchBtn)newMatchBtn.addEventListener("click",openNewMatchModal);
-if(closeNewMatch)closeNewMatch.addEventListener("click",closeNewMatchModal);
-if(cancelNewMatch)cancelNewMatch.addEventListener("click",closeNewMatchModal);
-if(newMatchForm)newMatchForm.addEventListener("submit",createMatch);
-if(newMatchOverlay)newMatchOverlay.addEventListener("click",e=>{if(e.target===newMatchOverlay)closeNewMatchModal()});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&newMatchOverlay?.classList.contains("open"))closeNewMatchModal()});
