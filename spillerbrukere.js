@@ -64,28 +64,36 @@ function clearCoachReply(e){const requestId=e.currentTarget.dataset.request;dele
 function ts(v){if(!v)return 0;if(typeof v.toDate==="function")return v.toDate().getTime();if(v.seconds)return v.seconds*1000;return 0}
 function dateText(v){const n=ts(v);return n?new Date(n).toLocaleString("no-NO",{dateStyle:"medium",timeStyle:"short"}):"Dato ikke tilgjengelig"}
 function openArchive(e){const uid=e.currentTarget.dataset.archive,acc=accounts.find(a=>a.uid===uid);if(!acc)return;openCommunication({currentTarget:{dataset:{communication:uid}}});document.querySelectorAll(".archiveConversation").forEach(el=>{if(el.querySelector(".archiveStatus.open"))el.remove()});$("communicationTitle").textContent="Arkiv · "+(acc.name||playerName(acc.playerId));$("communicationSub").textContent="Avsluttede utviklingssamtaler. Du kan åpne en samtale igjen og fortsette dialogen."}
-async function startCoachConversation(e){
+let newConversationTarget=null;
+function startCoachConversation(e){
  const uid=e.currentTarget.dataset.uid,acc=accounts.find(a=>a.uid===uid);
  if(!acc||!acc.approved||!acc.playerId)return alert("Spilleren må ha en godkjent spillerkonto først.");
  const existing=allRequests.find(r=>(r.uid===uid||r.playerId===acc.playerId)&&r.status==="open");
  if(existing){alert("Spilleren har allerede en aktiv samtale. Åpne kommunikasjonen og skriv videre der.");return}
- const name=acc.name||playerName(acc.playerId);
- const title=prompt("Tittel på samtalen:","Utviklingssamtale");
- if(title===null)return;
- const message=prompt("Skriv første melding til "+name+":","");
- if(message===null||!message.trim())return;
- const btn=e.currentTarget;btn.disabled=true;btn.textContent="Starter…";
+ newConversationTarget=acc;
+ $("newConversationPlayer").textContent=acc.name||playerName(acc.playerId);
+ $("newConversationTitle").value="Utviklingssamtale";
+ $("newConversationMessage").value="";
+ $("newConversationModal").hidden=false;
+ document.body.classList.add("modalOpen");
+ setTimeout(()=>$("newConversationMessage").focus(),50);
+}
+function closeNewConversation(){
+ $("newConversationModal").hidden=true;
+ document.body.classList.remove("modalOpen");
+ newConversationTarget=null;
+}
+async function submitNewConversation(){
+ const acc=newConversationTarget;if(!acc)return;
+ const title=$("newConversationTitle").value.trim()||"Utviklingssamtale";
+ const message=$("newConversationMessage").value.trim();
+ if(!message){$("newConversationMessage").focus();return}
+ const btn=$("submitNewConversation");btn.disabled=true;btn.textContent="Starter…";
  try{
-   await addDoc(collection(db,"developmentRequests"),{
-     uid,playerId:acc.playerId,title:(title.trim()||"Utviklingssamtale"),
-     message:message.trim(),status:"open",createdAt:serverTimestamp(),resolvedAt:null,
-     startedBy:"coach",startedByUid:auth.currentUser.uid
-   });
- }catch(err){
-   console.error("startCoachConversation:",err);
-   alert("Kunne ikke starte samtalen: "+(err.message||"ukjent feil"));
-   btn.disabled=false;btn.textContent="Ny samtale";
- }
+   await addDoc(collection(db,"developmentRequests"),{uid:acc.uid,playerId:acc.playerId,title,message,status:"open",createdAt:serverTimestamp(),resolvedAt:null,startedBy:"coach",startedByUid:auth.currentUser.uid});
+   closeNewConversation();
+ }catch(err){console.error("startCoachConversation:",err);alert("Kunne ikke starte samtalen: "+(err.message||"ukjent feil"))}
+ finally{btn.disabled=false;btn.textContent="Start samtale"}
 }
 function openCommunication(e){const uid=e.currentTarget.dataset.communication,acc=accounts.find(a=>a.uid===uid);if(!acc)return;const reqs=allRequests.filter(r=>r.uid===uid||r.playerId===acc.playerId).sort((a,b)=>ts(b.createdAt)-ts(a.createdAt));const content=reqs.length?reqs.map(r=>{const thread=messages.filter(m=>m.requestId===r.id).sort((a,b)=>ts(a.createdAt)-ts(b.createdAt));const items='<div class="archiveItem player"><div class="archiveMeta"><strong>'+esc(acc.name||playerName(acc.playerId))+'</strong><span>'+esc(dateText(r.createdAt))+'</span></div><small>STARTET SAMTALEN</small><p>'+esc(r.message||"Ønsker generell tilbakemelding")+'</p></div>'+thread.map(m=>{const parent=m.replyToMessageId?messages.find(x=>x.id===m.replyToMessageId):null;const fallback=!parent&&m.senderRole==="coach"?r:null;return '<div class="archiveItem '+(m.senderRole==="coach"?"coach":"player")+'">'+((parent||fallback)?'<div class="archiveReply"><span>Svar på '+(parent?"melding":"forespørsel")+'</span><p>'+esc(parent?.text||fallback?.message||"Ønsker generell tilbakemelding")+'</p></div>':'')+'<div class="archiveMeta"><strong>'+esc(m.senderRole==="coach"?"Du":(acc.name||playerName(acc.playerId)))+'</strong><span>'+esc(dateText(m.createdAt))+'</span></div><p>'+esc(m.text||"")+'</p></div>'}).join("");return '<section class="archiveConversation"><div class="archiveConversationHead"><div class="archiveTitleBlock"><strong>'+esc(r.title||"Utviklingssamtale")+'</strong><small>'+esc(dateText(r.createdAt))+'</small><span class="archiveStatus '+(r.status==="open"?"open":"closed")+'">'+(r.status==="open"?"AKTIV":"ARKIVERT")+'</span></div><button class="editConversationTitle archiveEditTitle" data-title="'+r.id+'">Rediger tittel</button>'+(r.status==="open"?"":'<button class="reopenConversation" data-reopen="'+r.id+'">Åpne samtalen igjen</button><button class="deleteConversation" data-delete="'+r.id+'">Slett samtale</button>')+'</div><div class="archiveThread">'+items+'</div>'+(r.status==="open"?'<div class="coachComposer"><div id="replytarget-'+r.id+'" class="replyTarget" style="display:none"><div><small>SVARER PÅ MELDING</small><p></p></div><button class="clearCoachReply" data-request="'+r.id+'" type="button">×</button></div><textarea id="reply-'+r.id+'" rows="3" placeholder="Skriv svar til '+esc(acc.name||playerName(acc.playerId))+'…"></textarea><div class="coachComposerActions"><button class="send" data-request="'+r.id+'">Send svar</button><button class="resolve" data-request="'+r.id+'">Ferdig</button></div></div>':'')+'</section>'}).join(""):'<p class="empty">Ingen kommunikasjon er registrert for denne spilleren.</p>';$("communicationTitle").textContent="Kommunikasjon · "+(acc.name||playerName(acc.playerId));$("communicationSub").textContent="Aktive og arkiverte utviklingssamtaler.";$("communicationBody").innerHTML=content;$("communicationModal").hidden=false;document.body.classList.add("modalOpen");document.querySelectorAll(".reopenConversation").forEach(b=>b.onclick=reopenConversation);document.querySelectorAll(".deleteConversation").forEach(b=>b.onclick=deleteConversation);document.querySelectorAll(".editConversationTitle").forEach(b=>b.onclick=editConversationTitle);document.querySelectorAll(".send").forEach(b=>b.onclick=sendReply);document.querySelectorAll(".resolve").forEach(b=>b.onclick=resolve);document.querySelectorAll(".clearCoachReply").forEach(b=>b.onclick=clearCoachReply)}
 async function deleteConversation(e){const id=e.currentTarget.dataset.delete,r=allRequests.find(x=>x.id===id);if(!r)return;if(r.status==="open")return alert("Aktive samtaler må markeres som Ferdig før de kan slettes.");const thread=messages.filter(m=>m.requestId===id);const title=r.title||"Utviklingssamtale";if(!confirm('Slette hele samtalen "'+title+'"?\n\nDette sletter forespørselen og '+thread.length+' melding'+(thread.length===1?"":"er")+' permanent. Handlingen kan ikke angres.'))return;const btn=e.currentTarget;btn.disabled=true;btn.textContent="Sletter…";try{const batch=writeBatch(db);thread.forEach(m=>batch.delete(doc(db,"developmentMessages",m.id)));batch.delete(doc(db,"developmentRequests",id));await batch.commit();closeCommunication()}catch(err){console.error("deleteConversation:",err);alert("Kunne ikke slette samtalen. Firestore-regelen for developmentRequests må tillate sletting for coach.");btn.disabled=false;btn.textContent="Slett samtale"}}
@@ -98,5 +106,10 @@ async function approve(e){const uid=e.currentTarget.dataset.uid,sel=$("sel-"+uid
 async function resetApproval(e){const uid=e.currentTarget.dataset.reset,acc=accounts.find(a=>a.uid===uid);if(!acc)return;if(!confirm("Fjerne godkjenningen for "+acc.name+"? Kontoen beholdes, men må godkjennes på nytt."))return;await updateDoc(doc(db,"playerAccounts",uid),{approved:false,playerId:null});await load()}
 async function sendReply(e){const btn=e.currentTarget,r=requests.find(x=>x.id===btn.dataset.request);if(!r)return;const ta=$("reply-"+r.id),text=ta.value.trim();if(!text)return alert("Skriv en tilbakemelding først.");btn.disabled=true;btn.textContent="Sender…";try{await addDoc(collection(db,"developmentMessages"),{playerId:r.playerId,uid:r.uid,text,senderRole:"coach",createdAt:serverTimestamp(),requestId:r.id,...(coachReplyTargets[r.id]?{replyToMessageId:coachReplyTargets[r.id]}:{})});await load()}catch(err){console.error("sendReply:",err);alert("Kunne ikke sende tilbakemeldingen. Prøv igjen.");btn.disabled=false;btn.textContent="Send svar"}}
 async function resolve(e){const id=e.currentTarget.dataset.request||e.currentTarget.dataset.resolve;if(!id)return alert("Kunne ikke finne samtalen.");if(!confirm("Markere denne samtalen som ferdig og flytte den til arkivet?"))return;const btn=e.currentTarget;btn.disabled=true;btn.textContent="Arkiverer…";try{await updateDoc(doc(db,"developmentRequests",id),{status:"resolved",resolvedAt:serverTimestamp(),resolvedBy:auth.currentUser.uid});closeCommunication();await load()}catch(err){console.error(err);alert("Kunne ikke avslutte samtalen: "+(err.message||"ukjent feil"));btn.disabled=false;btn.textContent="Ferdig"}}
+$("cancelNewConversation").onclick=closeNewConversation;
+$("closeNewConversation").onclick=closeNewConversation;
+$("submitNewConversation").onclick=submitNewConversation;
+$("newConversationModal").onclick=e=>{if(e.target===$("newConversationModal"))closeNewConversation()};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("newConversationModal").hidden)closeNewConversation()});
 onAuthStateChanged(auth,async user=>{try{if(!user)return location.href="index.html";const s=await getDoc(doc(db,"users",user.uid));if(!s.exists()||s.data().role!=="coach")return location.href="index.html";await load();startRealtime()}catch(err){console.error("Auth/admin:",err);$("pendingList").innerHTML="<p class=\"empty\">Feil: "+esc(err.code||err.message)+"</p>"}});
 $("guardianRemoveCancel")?.addEventListener("click",closeGuardianRemoveModal);$("guardianRemoveConfirm")?.addEventListener("click",confirmGuardianRemove);$("guardianRemoveModal")?.addEventListener("click",e=>{if(e.target.id==="guardianRemoveModal")closeGuardianRemoveModal()});
