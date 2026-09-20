@@ -2,11 +2,14 @@ const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https")
 const { onDocumentWritten, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
+const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const { OpenAI } = require("openai");
 
 admin.initializeApp();
 const db = admin.firestore();
+const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
+const GUARDIAN_EMAIL_FROM = "Samnanger G14 <onboarding@resend.dev>";
 
 const MATCH_REMINDER_STATUSES = [
   "NOT_STARTED",
@@ -1129,7 +1132,8 @@ async function requireCoach(uid) {
 
 exports.approveGuardianInvite = onCall({
   region: "europe-west1",
-  timeoutSeconds: 30
+  timeoutSeconds: 30,
+  secrets: [RESEND_API_KEY]
 }, async request => {
   await requireCoach(request.auth?.uid);
   const requestId = String(request.data?.requestId || "");
@@ -1155,7 +1159,31 @@ exports.approveGuardianInvite = onCall({
   });
 
   const inviteUrl = `https://coachfroden.github.io/spillerportal/?guardianInvite=${encodeURIComponent(token)}`;
-  return { inviteUrl, email: normalizeInviteEmail(data.guardianEmail), guardianName: data.guardianName || "Foresatt" };
+  const email = normalizeInviteEmail(data.guardianEmail);
+  const guardianName = data.guardianName || "Foresatt";
+  const playerName = data.playerName || "spilleren";
+  const apiKey = RESEND_API_KEY.value();
+  if (!apiKey) throw new HttpsError("failed-precondition", "E-posttjenesten er ikke konfigurert.");
+
+  const safe = value => String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const emailResponse = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json", "Idempotency-Key": `guardian-invite-${requestId}-${token.slice(0,12)}` },
+    body: JSON.stringify({
+      from: GUARDIAN_EMAIL_FROM,
+      to: [email],
+      subject: `Invitasjon som foresatt til ${playerName} – Samnanger G14`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#172033"><h2>Hei ${safe(guardianName)}</h2><p>${safe(playerName)} har lagt deg til som foresatt i Samnanger G14 sin spillerportal, og trener har godkjent koblingen.</p><p>Bruk knappen under for å opprette foresattkontoen. E-postadressen er låst til denne invitasjonen.</p><p style="margin:28px 0"><a href="${safe(inviteUrl)}" style="background:#0b5cff;color:white;text-decoration:none;padding:13px 20px;border-radius:8px;display:inline-block">Opprett foresattkonto</a></p><p>Lenken kan brukes én gang og utløper om 7 dager.</p><p style="font-size:13px;color:#667085">Hvis du ikke kjenner til dette, kan du ignorere e-posten.</p></div>`
+    })
+  });
+  const emailResult = await emailResponse.json().catch(() => ({}));
+  if (!emailResponse.ok) {
+    console.error("Resend guardian invite failed", emailResponse.status, emailResult);
+    await ref.update({ status:"pending", inviteToken:admin.firestore.FieldValue.delete(), inviteExpiresAt:admin.firestore.FieldValue.delete(), inviteUsed:admin.firestore.FieldValue.delete(), approvedAt:admin.firestore.FieldValue.delete(), approvedBy:admin.firestore.FieldValue.delete() });
+    throw new HttpsError("internal", emailResult?.message || "Kunne ikke sende invitasjonen på e-post.");
+  }
+  await ref.update({ inviteEmailId:emailResult.id || null, inviteEmailSentAt:admin.firestore.FieldValue.serverTimestamp() });
+  return { inviteUrl, email, guardianName, emailSent:true };
 });
 
 exports.getGuardianInvite = onCall({
