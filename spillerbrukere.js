@@ -44,7 +44,7 @@ function renderPlayerHub(){
   const gr=guardianRequests.filter(r=>r.playerId===p.id&&r.status==="pending");
   const open=requests.filter(r=>r.playerId===p.id||(acc&&r.uid===acc.uid));
   const archiveCount=allRequests.filter(r=>(r.playerId===p.id||(acc&&r.uid===acc.uid))&&r.status!=="open").length;
-  const pendingPlayerApproval=accounts.some(a=>!a.approved&&!a.rejected&&a.playerId===p.id)?1:0;
+  const pendingPlayerApproval=0;
   const unansweredPlayerMessages=open.filter(r=>{
     const thread=messages.filter(m=>m.requestId===r.id).sort((a,b)=>ts(a.createdAt)-ts(b.createdAt));
     if(thread.length)return thread[thread.length-1].senderRole!=="coach";
