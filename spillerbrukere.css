@@ -37,3 +37,5 @@
 .rejectAccount{border:1px solid #7f1d1d;border-radius:12px;background:#2a1014;color:#fca5a5;font-weight:800;padding:11px 13px;cursor:pointer}
 .rejectAccount:hover{background:#45151b;color:#fff}
 @media(max-width:700px){.pendingControls{grid-template-columns:1fr}.pendingControls button{width:100%}}
+
+.guardianRequestAdmin{border-color:#2c5162}.guardianApprovalNote{margin:12px 0 0;padding:10px 11px;border-radius:11px;background:#0e2730;color:#9fc4ce;font-size:11px;line-height:1.45}.guardianRequestControls{grid-template-columns:1fr auto}.approveGuardianRequest{border:0;border-radius:12px;background:#15803d;color:#fff;font-weight:800;padding:11px 13px;cursor:pointer}.rejectGuardianRequest{border:1px solid #7f1d1d;border-radius:12px;background:#2a1014;color:#fca5a5;font-weight:800;padding:11px 13px;cursor:pointer}@media(max-width:600px){.guardianRequestControls{grid-template-columns:1fr}}
