@@ -8,7 +8,8 @@ import {
   limit,
   query,
   serverTimestamp,
-  updateDoc
+  updateDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 const content = document.getElementById("content");
@@ -189,6 +190,7 @@ function renderPlayed() {
         <button class="shareResultBtn" type="button" data-share-match="${esc(m.id)}">↗ Del resultat</button>
         <button class="addEventBtn" type="button" data-add-event="${esc(m.id)}">＋ Legg til hendelse</button>
       </div>
+      ${currentRole === "coach" ? `<button class="deletePlayedMatchBtn" type="button" data-delete-match="${esc(m.id)}">Slett kamp</button>` : ""}
       <button class="eventsToggle" type="button" data-events="${esc(m.id)}" aria-expanded="${open ? "true" : "false"}">
         <span>Hendelser</span><span>${count} ${open ? "⌃" : "⌄"}</span>
       </button>
@@ -212,6 +214,40 @@ function renderPlayed() {
     button.addEventListener("click", () => {
       const match = matches.find(m => m.id === button.dataset.shareMatch);
       if (match) shareMatchResult(match, button);
+    });
+  });
+
+  content.querySelectorAll("[data-delete-match]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const match = matches.find(m => m.id === button.dataset.deleteMatch);
+      if (!match || currentRole !== "coach") return;
+      const opponent = match?.meta?.opponent || "denne kampen";
+      if (!confirm(`Slette kampen mot ${opponent} permanent? Den fjernes også fra livearkivet.`)) return;
+
+      button.disabled = true;
+      button.textContent = "Sletter…";
+      try {
+        await deleteDoc(doc(db, "matches", match.id));
+        await deleteDoc(doc(db, "publicMatches", match.id)).catch(err => {
+          if (err?.code !== "not-found") throw err;
+        });
+
+        const liveRef = doc(db, "publicMatches", "samnanger-g14-live");
+        const liveSnap = await getDoc(liveRef);
+        if (liveSnap.exists()) {
+          const live = liveSnap.data();
+          const liveMatchId = live.matchId || live.sourceMatchId || live.id;
+          if (String(liveMatchId || "") === String(match.id)) await deleteDoc(liveRef);
+        }
+
+        matches = matches.filter(m => m.id !== match.id);
+        renderPlayed();
+      } catch (err) {
+        console.error("Kunne ikke slette kampen:", err);
+        alert("Kunne ikke slette kampen: " + (err.message || "ukjent feil"));
+        button.disabled = false;
+        button.textContent = "Slett kamp";
+      }
     });
   });
 
