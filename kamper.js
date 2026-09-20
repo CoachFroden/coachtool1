@@ -238,7 +238,7 @@ function isLiveMatchStatus(status) {
 }
 
 function openLiveMatch(matchId) {
-  window.location.href = `kamp-live.html?matchId=${encodeURIComponent(matchId)}&app=1`;
+  window.location.href = `kamp.html?matchId=${encodeURIComponent(matchId)}`;
 }
 
 function localDateString() {
