@@ -107,3 +107,10 @@
 /* Refined secondary/destructive actions */
 .startCoachConversation{background:#102d42!important;border:1px solid #2c5b79!important;color:#d8efff!important;box-shadow:none!important;font-size:12px!important;font-weight:800!important;padding:9px 13px!important;border-radius:10px!important}.startCoachConversation:hover{background:#153a54!important;border-color:#3c7194!important}
 .unlinkGuardian{background:rgba(127,29,29,.10)!important;border:1px solid rgba(248,113,113,.30)!important;color:#fca5a5!important;box-shadow:none!important;font-size:11px!important;font-weight:750!important;padding:7px 10px!important;border-radius:9px!important;opacity:.88!important}.unlinkGuardian:hover{background:rgba(127,29,29,.22)!important;border-color:rgba(248,113,113,.55)!important;color:#fecaca!important;opacity:1!important}
+
+/* Final action button alignment */
+.hubConversationActions>button{height:36px!important;min-height:36px!important;padding:0 13px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:1!important;border-radius:10px!important;box-sizing:border-box!important}
+.hubConversationActions .startCoachConversation{background:#0f6b46!important;border:1px solid #21865d!important;color:#ecfff5!important;box-shadow:none!important;font-size:12px!important;font-weight:800!important}
+.hubConversationActions .startCoachConversation:hover{background:#128055!important;border-color:#2a9b6d!important}
+.removeGuardianLink.danger{background:rgba(127,29,29,.14)!important;border:1px solid rgba(248,113,113,.38)!important;color:#fca5a5!important;box-shadow:none!important;font-size:11px!important;font-weight:750!important;padding:7px 10px!important;border-radius:9px!important;opacity:.92!important}
+.removeGuardianLink.danger:hover{background:rgba(127,29,29,.28)!important;border-color:rgba(248,113,113,.62)!important;color:#fee2e2!important;opacity:1!important}
