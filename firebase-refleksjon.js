@@ -26,5 +26,7 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app, "us-central1");
+// Foresattinvitasjoner kjører i europe-west1. Beholder eksisterende functions i us-central1.
+export const guardianFunctions = getFunctions(app, "europe-west1");
 
 console.log("FUNCTIONS REGION:", functions.region);
