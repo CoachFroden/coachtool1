@@ -1186,6 +1186,46 @@ exports.approveGuardianInvite = onCall({
   return { inviteUrl, email, guardianName, emailSent:true };
 });
 
+
+exports.deleteGuardianAccount = onCall({
+  region: "europe-west1",
+  timeoutSeconds: 30
+}, async request => {
+  await requireCoach(request.auth?.uid);
+  const guardianUid = String(request.data?.guardianUid || "");
+  if (!guardianUid) throw new HttpsError("invalid-argument", "Foresatt mangler.");
+
+  const guardianRef = db.collection("guardianAccounts").doc(guardianUid);
+  const guardianSnap = await guardianRef.get();
+  if (!guardianSnap.exists) throw new HttpsError("not-found", "Foresattkontoen finnes ikke.");
+  const guardian = guardianSnap.data() || {};
+  const email = normalizeInviteEmail(guardian.email);
+
+  // Fjern invitasjons-/koblingsdata for denne foresatte. Spillernes samtaler beholdes.
+  const requestDocs = new Map();
+  const byUid = await db.collection("guardianRequests").where("guardianUid", "==", guardianUid).get();
+  byUid.docs.forEach(d => requestDocs.set(d.ref.path, d.ref));
+  if (email) {
+    const byEmail = await db.collection("guardianRequests").where("guardianEmail", "==", email).get();
+    byEmail.docs.forEach(d => requestDocs.set(d.ref.path, d.ref));
+  }
+
+  const refs = [guardianRef, ...requestDocs.values()];
+  while (refs.length) {
+    const batch = db.batch();
+    refs.splice(0, 450).forEach(ref => batch.delete(ref));
+    await batch.commit();
+  }
+
+  try {
+    await admin.auth().deleteUser(guardianUid);
+  } catch (error) {
+    if (error?.code !== "auth/user-not-found") throw error;
+  }
+
+  return { success: true };
+});
+
 exports.getGuardianInvite = onCall({
   region: "europe-west1",
   timeoutSeconds: 30
