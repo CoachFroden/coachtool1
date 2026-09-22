@@ -47,8 +47,13 @@ function renderPlayerHub(){
   const pendingPlayerApproval=0;
   const unansweredPlayerMessages=open.filter(r=>{
     const thread=messages.filter(m=>m.requestId===r.id).sort((a,b)=>ts(a.createdAt)-ts(b.createdAt));
-    if(thread.length)return thread[thread.length-1].senderRole!=="coach";
-    return r.startedBy!=="coach";
+    const reopenedByCoach=!!r.reopenedBy;
+    if(thread.length){
+      const last=thread[thread.length-1];
+      if(reopenedByCoach&&ts(last.createdAt)<=ts(r.reopenedAt))return false;
+      return last.senderRole!=="coach";
+    }
+    return r.startedBy!=="coach"&&!reopenedByCoach;
   }).length;
   const needs=pendingPlayerApproval+gr.length+unansweredPlayerMessages;
   const guardianHtml=gs.length?gs.map(g=>'<div class="hubGuardianRow"><div><strong>'+esc(g.name||"Foresatt")+'</strong><span>'+esc(g.email||"")+'</span></div><span class="badge '+(g.approved?"ok":"")+'">'+(g.approved?"AKTIV":"VENTER")+'</span><button class="removeGuardianLink danger" data-guardian="'+g.uid+'" data-player="'+p.id+'">Fjern kobling</button></div>').join(""):'<p class="hubEmpty">Ingen aktive foresatte.</p>';
