@@ -118,3 +118,126 @@
 .coachArchiveList{display:grid;gap:10px}.coachArchiveRow{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;padding:16px 18px;border:1px solid #24465f;border-radius:15px;background:#0d2233;color:#fff;cursor:pointer}.coachArchiveRow:hover{background:#122b40}.coachArchiveRow div{display:grid;gap:5px}.coachArchiveRow strong{font-size:15px}.coachArchiveRow small{color:#8fa9bd;font-size:12px}.coachArchiveRow>span{font-size:28px;color:#76b9ea}.coachArchiveBack{margin-bottom:14px}.archiveBackBtn{border:1px solid #3477aa;border-radius:11px;background:#102b40;color:#dceeff;padding:9px 13px;font-weight:700;cursor:pointer}
 
 .hubReopened{display:block!important;margin-top:5px;color:#60a5fa!important;font-weight:800}.conversationSystemEvent{margin:10px 0;padding:10px 14px;border:1px solid #2563eb;border-radius:10px;background:#0b2544;color:#93c5fd;display:flex;justify-content:space-between;gap:12px;align-items:center}.conversationSystemEvent span{font-size:11px;color:#8da5bd}
+
+
+/* 2026-09-25 compact player admin */
+.summary{display:none!important}
+.pendingToggle{
+  width:100%;
+  display:grid;
+  grid-template-columns:42px 1fr 24px;
+  align-items:center;
+  gap:11px;
+  margin:2px 0 14px;
+  padding:10px 12px;
+  border:1px solid rgba(245,158,11,.32);
+  border-radius:14px;
+  background:linear-gradient(145deg,rgba(69,46,10,.54),rgba(25,25,16,.74));
+  color:#fff;
+  text-align:left;
+  cursor:pointer;
+}
+.pendingToggle[hidden]{display:none!important}
+.pendingBadge{
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  background:#f59e0b;
+  color:#221506;
+  font-size:17px;
+  font-weight:950;
+}
+.pendingToggle strong,.pendingToggle small{display:block}
+.pendingToggle strong{font-size:13px;color:#ffe4a3}
+.pendingToggle small{margin-top:2px;color:#ae9870;font-size:10px}
+.pendingToggle>b{color:#f5c56b;font-size:18px;transition:transform .18s}
+.pendingToggle.open>b{transform:rotate(180deg)}
+.pendingSection{
+  margin:-4px 0 18px;
+  padding:10px;
+  border:1px solid rgba(245,158,11,.20);
+  border-radius:14px;
+  background:rgba(46,32,10,.20);
+}
+.pendingSection[hidden]{display:none!important}
+.pendingApprovalCard{
+  border-color:rgba(245,158,11,.24);
+  background:linear-gradient(145deg,#1a201f,#101619);
+}
+.playerBlock{margin-top:18px}
+.playerHub{gap:8px}
+.playerHubCard{
+  border-color:#1d3a4f;
+  border-radius:14px;
+  background:linear-gradient(145deg,#0b2031,#081722);
+}
+.playerHubCard>summary{
+  grid-template-columns:1fr auto 22px;
+  min-height:58px;
+  gap:10px;
+  padding:11px 13px;
+}
+.playerHubCard>summary:hover{
+  background:#0e2739;
+}
+.playerHubCard[open]>summary{
+  background:linear-gradient(90deg,#0f2b3d,#0c2130);
+}
+.playerHubName strong{
+  font-size:14px;
+}
+.playerHubName span,.playerHubStats{
+  display:none!important;
+}
+.playerOkDot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:#22c55e;
+  box-shadow:0 0 0 4px rgba(34,197,94,.10),0 0 12px rgba(34,197,94,.28);
+}
+.playerHubCard.needsAttention{
+  border-color:rgba(245,158,11,.42);
+}
+.hubNeeds{
+  min-width:24px;
+  height:24px;
+  display:grid;
+  place-items:center;
+  padding:0 7px;
+  background:#f59e0b;
+  color:#241706;
+  border:0;
+  font-size:10px;
+}
+.playerHubBody{
+  gap:9px;
+  padding:11px 13px 14px;
+}
+.playerHubBody section{
+  padding:11px;
+  border-radius:11px;
+}
+.hubAccountSection{
+  border-color:rgba(34,197,94,.23)!important;
+  background:linear-gradient(145deg,rgba(11,43,31,.62),rgba(8,24,24,.78))!important;
+}
+.hubCommunicationSection{
+  border-color:rgba(59,130,246,.26)!important;
+  background:linear-gradient(145deg,rgba(13,37,61,.72),rgba(8,22,34,.82))!important;
+}
+.hubGuardianSection{
+  border-color:rgba(168,85,247,.24)!important;
+  background:linear-gradient(145deg,rgba(38,24,54,.55),rgba(15,20,31,.80))!important;
+}
+.hubAccountSection h4{color:#86efac}
+.hubCommunicationSection h4{color:#93c5fd}
+.hubGuardianSection h4{color:#d8b4fe}
+.playerHubBody h4{margin-bottom:8px}
+@media(max-width:520px){
+  .pendingToggle{grid-template-columns:38px 1fr 20px;padding:9px 10px}
+  .pendingBadge{width:34px;height:34px;border-radius:10px;font-size:15px}
+  .playerHubCard>summary{min-height:54px;padding:10px 11px}
+}
