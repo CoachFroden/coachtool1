@@ -1,0 +1,926 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =====================================================
+    // HJELPEFUNKSJONER
+    // =====================================================
+
+    function isCoachOrAssistant() {
+      return request.auth != null
+        && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+          ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "assistantCoach"
+        );
+    }
+
+    function isCoach() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+    }
+
+    function playerAccount() {
+      return get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid));
+    }
+
+    function approvedPlayer() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/playerAccounts/$(request.auth.uid))
+        && playerAccount().data.approved == true
+        && playerAccount().data.playerId != null;
+    }
+
+    // =====================================================
+    // PASSWORD REQUESTS
+    // =====================================================
+
+    match /passwordRequests/{username} {
+
+      allow create, update:
+        if request.resource.data.username == username;
+
+      allow read:
+        if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+
+      allow delete:
+        if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+    }
+
+    // =====================================================
+    // TRENERHJØRNET
+    // =====================================================
+
+    match /spillere/{playerId} {
+
+      allow read: if true;
+
+      allow update:
+        if request.auth != null
+        && (
+          request.auth.uid == resource.data.uid
+          ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+        );
+
+      allow create, delete: if false;
+    }
+
+    // =====================================================
+    // UTVIKLINGSPLAN / EVALUERINGER
+    // =====================================================
+
+    match /evalueringer/{docId} {
+
+      allow read:
+        if request.auth != null
+        && (
+          resource.data.uid == request.auth.uid
+          ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+        );
+
+      allow write:
+        if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+    }
+
+    // =====================================================
+    // MATCHES – COACH (EMAIL VERIFIED)
+    // =====================================================
+
+    match /users/{userId}/matches/{matchId} {
+
+      allow read, write:
+        if request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email_verified == true;
+    }
+
+    // =====================================================
+    // USERS
+    // =====================================================
+
+    match /users/{userId} {
+
+      allow read:
+        if request.auth != null
+        && (
+          request.auth.uid == userId
+          ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+        );
+
+      allow create:
+        if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.role == "assistantCoach"
+        && request.resource.data.approved == false;
+
+      allow update:
+        if request.auth != null
+        && request.auth.uid == userId
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role != "assistantCoach"
+        && !request.resource.data
+          .diff(resource.data)
+          .changedKeys()
+          .hasAny(['role', 'approved']);
+
+      allow update:
+        if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+
+      allow delete: if false;
+
+      // ===================================================
+      // ACTIVITY SESSIONS
+      // ===================================================
+
+      match /activitySessions/{sessionId} {
+
+        allow create, update:
+          if request.auth != null
+          && request.auth.uid == userId;
+
+        allow read:
+          if request.auth != null
+          && (
+            request.auth.uid == userId
+            ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+            ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "assistantCoach"
+          );
+
+        allow delete: if false;
+      }
+    }
+
+    // =====================================================
+    // ADMIN TOKENS
+    // =====================================================
+
+    match /adminTokens/{uid} {
+
+      allow read, write:
+        if request.auth != null
+        && request.auth.uid == uid
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+    }
+
+    // =====================================================
+    // REFLEKSJONER
+    // =====================================================
+
+    match /refleksjoner/{playerId} {
+
+      allow get, list:
+        if request.auth != null
+        && (
+          request.auth.uid == playerId
+          ||
+          isCoachOrAssistant()
+        );
+
+      allow create:
+        if request.auth != null
+        && request.auth.uid == playerId
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true;
+
+      allow update:
+        if request.auth != null
+        && request.auth.uid == playerId;
+
+      allow delete: if false;
+
+      // ===================================================
+      // UKEREFLEKSJONER
+      // ===================================================
+
+      match /entries/{entryId} {
+
+        allow create:
+          if request.auth != null
+          && request.auth.uid == playerId
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true;
+
+        allow update:
+          if request.auth != null
+          && (
+            request.auth.uid == playerId
+            ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+          );
+
+        allow get, list:
+          if request.auth != null
+          && (
+            request.auth.uid == playerId
+            ||
+            isCoachOrAssistant()
+          );
+
+        allow delete: if false;
+
+        // =================================================
+        // HISTORIKK
+        // =================================================
+
+        match /updates/{updateId} {
+
+          allow create:
+            if request.auth != null
+            && request.auth.uid == playerId;
+
+          allow get, list:
+            if request.auth != null
+            && (
+              request.auth.uid == playerId
+              ||
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+            );
+
+          allow update, delete: if false;
+        }
+      }
+    }
+
+    // =====================================================
+    // SESONGMÅL
+    // =====================================================
+
+    match /seasonGoals/{userId} {
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow read: if request.auth != null;
+    }
+
+    // =====================================================
+    // AI ANALYSE
+    // =====================================================
+
+    match /aiAnalysis/{playerId} {
+
+      allow read, write:
+        if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+
+      match /weeks/{weekId} {
+
+        allow read, write:
+          if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+      }
+    }
+
+    // =====================================================
+    // UTVIKLINGSPLAN
+    // =====================================================
+
+    match /utviklingsplan/{playerId} {
+
+      allow read:
+        if request.auth != null
+        && (
+          request.auth.uid == playerId
+          ||
+          isCoachOrAssistant()
+        );
+
+      allow write:
+        if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+
+      match /historikk/{docId} {
+
+        allow read:
+          if request.auth != null
+          && (
+            request.auth.uid == playerId
+            ||
+            isCoachOrAssistant()
+          );
+
+        allow create:
+          if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+
+        allow update, delete: if false;
+      }
+    }
+
+    // =====================================================
+    // FEEDBACK
+    // =====================================================
+
+    match /feedback/{docId} {
+
+      allow read: if isCoachOrAssistant();
+
+      allow create, update, delete:
+        if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+
+      allow read:
+        if request.auth != null
+        && resource.data.playerId == request.auth.uid
+        && resource.data.status == "sent";
+    }
+
+    // =====================================================
+    // ROOT MATCHES
+    // =====================================================
+
+    match /matches/{matchId} {
+
+      allow read:
+        if request.auth != null
+        && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+          ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "assistantCoach"
+          ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "player"
+        );
+
+      allow create, update:
+        if request.auth != null
+        && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+          ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "assistantCoach"
+        );
+
+      allow delete:
+        if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+    }
+
+    // =====================================================
+    // ASSISTANT MATCHES
+    // =====================================================
+
+    match /assistantMatches/{assistantId}/matches/{matchId} {
+
+      allow read:
+        if request.auth != null
+        && (
+          request.auth.uid == assistantId
+          ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+        );
+
+      allow write:
+        if request.auth != null
+        && (
+          (
+            request.auth.uid == assistantId
+            &&
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "assistantCoach"
+          )
+          ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+        );
+    }
+
+    // =====================================================
+    // PUBLIC STATISTIKK
+    // =====================================================
+
+    match /users/{userId}/matches/{matchId} {
+
+      allow read: if true;
+
+      allow write:
+        if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    match /kampanalyser/{docId} {
+      allow read, write: if true;
+    }
+
+    // =====================================================
+    // PUBLIC MATCH STATISTIKK
+    // =====================================================
+
+    match /publicMatches/{matchId} {
+
+      allow read: if true;
+
+      allow write:
+        if request.auth != null;
+    }
+
+    // =====================================================
+    // UKENS ØVELSER
+    // =====================================================
+
+    match /weeklyExercises/{docId} {
+
+      allow read: if true;
+
+      allow write:
+        if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+    }
+
+    // =====================================================
+    // TRENINGER – PLANLEGGING / SPILLERVISNING
+    // =====================================================
+
+    match /trainingSessions/{sessionId} {
+
+      allow read:
+        if isCoach()
+        || (
+          approvedPlayer()
+          && resource.data.published == true
+        );
+
+      allow create, update, delete:
+        if isCoach();
+    }
+
+    // =====================================================
+    // TRENINGER – SPILLERØNSKER
+    // =====================================================
+
+    match /trainingWishes/{wishId} {
+
+      allow create:
+        if approvedPlayer()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.playerId == playerAccount().data.playerId
+        && request.resource.data.status == "new"
+        && request.resource.data.playerName is string
+        && request.resource.data.category is string
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 3
+        && request.resource.data.text.size() <= 400
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'playerId',
+          'playerName',
+          'category',
+          'text',
+          'status',
+          'createdAt'
+        ]);
+
+      allow read:
+        if isCoach()
+        || (
+          approvedPlayer()
+          && resource.data.uid == request.auth.uid
+          && resource.data.playerId == playerAccount().data.playerId
+        );
+
+      allow update:
+        if isCoach()
+        && request.resource.data.status in [
+          'new',
+          'considering',
+          'planned',
+          'used'
+        ];
+
+      allow delete:
+        if isCoach();
+    }
+
+    // =====================================================
+    // BEEPTEST
+    // =====================================================
+
+    match /beeptestResults/{docId} {
+      allow read, write: if true;
+    }
+
+    // =====================================================
+    // BRONCO 1200
+    // =====================================================
+
+    match /broncoTests/{testId} {
+
+      allow read: if isCoach();
+      allow create: if isCoach();
+      allow update: if isCoach();
+      allow delete: if isCoach();
+    }
+
+    match /broncoConfig/{docId} {
+
+      allow read: if isCoach();
+      allow create: if isCoach();
+      allow update: if isCoach();
+      allow delete: if false;
+    }
+
+    // =====================================================
+    // COOPER TEST
+    // =====================================================
+
+    match /cooperTests/{testId} {
+
+      allow read: if isCoach();
+      allow create: if isCoach();
+      allow update: if isCoach();
+      allow delete: if isCoach();
+    }
+
+    // =====================================================
+    // COOPER KONFIGURASJON
+    // =====================================================
+
+    match /cooperConfig/{docId} {
+
+      allow read: if isCoach();
+      allow create: if isCoach();
+      allow update: if isCoach();
+      allow delete: if false;
+    }
+
+    // =====================================================
+    // GAME STATS
+    // =====================================================
+
+    match /gameStats/{userId} {
+
+      allow read: if true;
+
+      allow write:
+        if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    // =====================================================
+    // TEAM STATS
+    // =====================================================
+
+    match /teamStats/{docId} {
+
+      allow read: if true;
+
+      allow write:
+        if request.auth != null;
+    }
+
+    // =====================================================
+    // EXERCISE LOGS
+    // =====================================================
+
+    match /exerciseLogs/{logId} {
+
+      allow create:
+        if request.auth != null
+        && request.resource.data.uid == request.auth.uid;
+
+      allow read:
+        if request.auth != null;
+
+      allow delete:
+        if request.auth != null
+        && (
+          request.auth.uid == resource.data.uid
+          ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+        );
+    }
+
+    // =====================================================
+    // USER LOGINS
+    // =====================================================
+
+    match /userLogins/{userId} {
+
+      allow read:
+        if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+
+      allow write:
+        if request.auth != null
+        && request.auth.uid == userId;
+
+      match /sessions/{sessionId} {
+
+        allow read:
+          if request.auth != null
+          && (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
+            ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "assistantCoach"
+          );
+
+        allow create:
+          if request.auth != null
+          && request.auth.uid == userId;
+
+        allow update, delete: if false;
+      }
+    }
+
+    // =====================================================
+    // LOGIN LOGS
+    // =====================================================
+
+    match /loginLogs/{docId} {
+
+      allow create:
+        if request.auth != null;
+
+      allow read:
+        if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+    }
+
+    // =====================================================
+    // MONTHLY STATS
+    // =====================================================
+
+    match /monthlyStats/{docId} {
+
+      allow create, update:
+        if request.auth != null
+        && request.resource.data.uid == request.auth.uid;
+
+      allow read:
+        if request.auth != null;
+
+      allow delete: if false;
+    }
+
+    // =====================================================
+    // SPILLERPORTAL – KONTOER
+    // =====================================================
+
+    match /playerAccounts/{uid} {
+
+      allow create:
+        if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.approved == false
+        && request.resource.data.playerId == null;
+
+      allow read:
+        if request.auth != null
+        && (
+          request.auth.uid == uid
+          ||
+          isCoach()
+        );
+
+      allow update:
+        if isCoach();
+
+      allow delete: if false;
+    }
+
+    // =====================================================
+    // SPILLERPORTAL – FORESATTKONTOER
+    // =====================================================
+
+    match /guardianAccounts/{uid} {
+
+      allow create:
+        if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.approved == false
+        && request.resource.data.playerIds is list
+        && request.resource.data.playerIds.size() == 0;
+
+      allow read:
+        if request.auth != null
+        && (
+          request.auth.uid == uid
+          ||
+          isCoach()
+        );
+
+      allow update:
+        if isCoach();
+
+      allow delete: if false;
+    }
+
+    // =====================================================
+    // SPILLERPORTAL – FORESPØRSLER OM FORESATTTILGANG
+    // =====================================================
+
+    match /guardianRequests/{requestId} {
+
+      allow create:
+        if request.auth != null
+        && exists(/databases/$(database)/documents/playerAccounts/$(request.auth.uid))
+        && get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.approved == true
+        && get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.playerId != null
+        && request.resource.data.playerUid == request.auth.uid
+        && request.resource.data.playerId ==
+          get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.playerId
+        && request.resource.data.guardianName is string
+        && request.resource.data.guardianEmail is string
+        && request.resource.data.status == "pending"
+        && request.resource.data.keys().hasOnly([
+          'playerUid',
+          'playerId',
+          'playerName',
+          'guardianName',
+          'guardianEmail',
+          'status',
+          'createdAt'
+        ]);
+
+      allow read:
+        if request.auth != null
+        && (
+          isCoach()
+          ||
+          resource.data.playerUid == request.auth.uid
+        );
+
+      allow update:
+        if isCoach();
+
+      allow delete:
+        if isCoach();
+    }
+
+    // =====================================================
+    // SPILLERPORTAL – ØNSKER TILBAKEMELDING
+    // =====================================================
+
+    match /developmentRequests/{requestId} {
+
+      allow create:
+        if request.auth != null
+        && (
+          isCoach()
+          ||
+          (
+            exists(/databases/$(database)/documents/playerAccounts/$(request.auth.uid))
+            &&
+            get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.approved == true
+            &&
+            get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.playerId != null
+            &&
+            request.resource.data.uid == request.auth.uid
+            &&
+            request.resource.data.playerId ==
+              get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.playerId
+          )
+        )
+        && request.resource.data.status == "open";
+
+      allow read:
+        if request.auth != null
+        && (
+          isCoach()
+
+          ||
+
+          (
+            exists(/databases/$(database)/documents/playerAccounts/$(request.auth.uid))
+            &&
+            get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.approved == true
+            &&
+            resource.data.uid == request.auth.uid
+            &&
+            resource.data.playerId ==
+              get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.playerId
+          )
+
+          ||
+
+          (
+            exists(/databases/$(database)/documents/guardianAccounts/$(request.auth.uid))
+            &&
+            get(/databases/$(database)/documents/guardianAccounts/$(request.auth.uid)).data.approved == true
+            &&
+            get(/databases/$(database)/documents/guardianAccounts/$(request.auth.uid)).data.playerIds.hasAny(
+              [resource.data.playerId]
+            )
+          )
+        );
+
+      allow update:
+        if isCoach()
+        ||
+        (
+          request.auth != null
+          &&
+          exists(/databases/$(database)/documents/playerAccounts/$(request.auth.uid))
+          &&
+          get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.approved == true
+          &&
+          resource.data.uid == request.auth.uid
+          &&
+          resource.data.playerId ==
+            get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.playerId
+          &&
+          request.resource.data.uid == resource.data.uid
+          &&
+          request.resource.data.playerId == resource.data.playerId
+          &&
+          resource.data.status != "open"
+          &&
+          request.resource.data.status == "open"
+          &&
+          request.resource.data.reopenedBy == "player"
+          &&
+          request.resource.data
+            .diff(resource.data)
+            .affectedKeys()
+            .hasOnly([
+              'status',
+              'reopenedAt',
+              'reopenedBy',
+              'resolvedAt'
+            ])
+        );
+
+      allow delete: if isCoach();
+    }
+
+    // =====================================================
+    // SPILLERPORTAL – MELDINGER / OPPFØLGING
+    // =====================================================
+
+    match /developmentMessages/{messageId} {
+
+      allow read:
+        if request.auth != null
+        && (
+          isCoach()
+
+          ||
+
+          (
+            exists(/databases/$(database)/documents/playerAccounts/$(request.auth.uid))
+            &&
+            get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.approved == true
+            &&
+            resource.data.playerId ==
+              get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.playerId
+          )
+
+          ||
+
+          (
+            exists(/databases/$(database)/documents/guardianAccounts/$(request.auth.uid))
+            &&
+            get(/databases/$(database)/documents/guardianAccounts/$(request.auth.uid)).data.approved == true
+            &&
+            get(/databases/$(database)/documents/guardianAccounts/$(request.auth.uid)).data.playerIds.hasAny(
+              [resource.data.playerId]
+            )
+          )
+        );
+
+      allow create:
+        if request.auth != null
+        && (
+          isCoach()
+
+          ||
+
+          (
+            exists(/databases/$(database)/documents/playerAccounts/$(request.auth.uid))
+            &&
+            get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.approved == true
+            &&
+            request.resource.data.uid == request.auth.uid
+            &&
+            request.resource.data.playerId ==
+              get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.playerId
+            &&
+            request.resource.data.senderRole == "player"
+          )
+        );
+
+      allow update: if false;
+
+      allow delete:
+        if request.auth != null
+        && (
+          isCoach()
+
+          ||
+
+          (
+            exists(/databases/$(database)/documents/playerAccounts/$(request.auth.uid))
+            &&
+            get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.approved == true
+            &&
+            resource.data.uid == request.auth.uid
+            &&
+            resource.data.playerId ==
+              get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid)).data.playerId
+          )
+        );
+    }
+  }
+}
