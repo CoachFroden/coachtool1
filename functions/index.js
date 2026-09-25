@@ -1188,6 +1188,74 @@ exports.approveGuardianInvite = onCall({
 
 
 
+
+exports.sendPortalPasswordReset = onCall({
+  region: "europe-west1",
+  timeoutSeconds: 30,
+  secrets: [RESEND_API_KEY]
+}, async request => {
+  const email = normalizeInviteEmail(request.data?.email);
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    throw new HttpsError("invalid-argument", "Skriv inn en gyldig e-postadresse.");
+  }
+
+  // Keep the public response generic so this endpoint does not reveal
+  // whether an e-mail address has an account.
+  let resetUrl;
+  let user;
+  try {
+    user = await admin.auth().getUserByEmail(email);
+    resetUrl = await admin.auth().generatePasswordResetLink(email, {
+      url: "https://coachfroden.github.io/spillerportal/"
+    });
+  } catch (error) {
+    if (error?.code === "auth/user-not-found") {
+      return { success: true };
+    }
+    console.error("Could not generate portal password reset link", error);
+    throw new HttpsError("internal", "Kunne ikke lage lenke for nytt passord.");
+  }
+
+  const apiKey = RESEND_API_KEY.value();
+  if (!apiKey) throw new HttpsError("failed-precondition", "E-posttjenesten er ikke konfigurert.");
+
+  const safe = value => String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+  const displayName = user.displayName || "der";
+  const emailResponse = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      from: GUARDIAN_EMAIL_FROM,
+      to: [email],
+      subject: "Lag nytt passord – Samnanger G14 Spillerportal",
+      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#172033">
+        <h2>Hei ${safe(displayName)}</h2>
+        <p>Vi har fått en forespørsel om å lage nytt passord til kontoen din i Samnanger G14 sin spillerportal.</p>
+        <p style="margin:28px 0"><a href="${safe(resetUrl)}" style="background:#0b5cff;color:white;text-decoration:none;padding:13px 20px;border-radius:8px;display:inline-block">Lag nytt passord</a></p>
+        <p>Hvis du ikke ba om nytt passord, kan du ignorere denne e-posten. Det gamle passordet virker fortsatt.</p>
+        <p style="font-size:13px;color:#667085">Lenken er laget av Firebase Authentication og kan bare brukes til denne kontoen.</p>
+      </div>`
+    })
+  });
+
+  const emailResult = await emailResponse.json().catch(() => ({}));
+  if (!emailResponse.ok) {
+    console.error("Resend password reset failed", emailResponse.status, emailResult);
+    throw new HttpsError("internal", "Kunne ikke sende e-post med nytt passord.");
+  }
+
+  return { success: true };
+});
+
+
 exports.createGuardianInvite = onCall({
   region: "europe-west1",
   timeoutSeconds: 30,
