@@ -1,25 +1,228 @@
 import { auth, db } from "./firebase-refleksjon.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import {
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot,
+  serverTimestamp, setDoc, updateDoc
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-const seededPlan={title:"Kompakt lag & ro med ballen",date:"2026-09-02",focus:"Fjerne blindpasninger, holde bredde og forminske avstander mellom leddene.",intro:"Tre prinsipper: Fredet korridor gir tid til å se opp og holde bredde. Hele laget over midtlinjen krymper banen. I 1v1 skal vi presse aggressivt uten å rygge.",progression:"Uke 1–2: Kjør økten med full fredning.\nUke 3–4: Kanten har bare 3 sekunder fredning før forsvareren kan presse.\nUke 5–6: Fjern midtlinje-regelen. Bruk kampvideo til å kontrollere om stopperne holder laget kompakt frivillig.",sections:[
-{title:"Praten i ringen",minutes:5,details:"Aktiver spillernes forståelse av fredet korridor, midtlinje-regelen og aggressivt press.",coaching:"Spør hvorfor vi bruker reglene. La spillerne formulere svarene selv."},
-{title:"Fysisk start",minutes:10,details:"Lett jogg og dynamisk tøying for å gjøre kroppen klar.",coaching:"Kontrollert progresjon og god bevegelseskvalitet."},
-{title:"1 mot 1 med pasning",minutes:10,details:"Bane 15 x 10 m. Angriper spiller over til forsvarer, som spurter direkte i press.",coaching:"Spurt–brems. Lavt i knærne, brems én meter før og styr angriperen utover."},
-{title:"Rondo med jokere",minutes:10,details:"Bane 25 x 20 m. To jevne lag inne og jokere på linjene. Tilpass antallet. Maks to berøringer sentralt.",coaching:"Skann over skulderen før mottak. Bruk støttepasning bakover når det koker."},
-{title:"Kantkombinasjon",minutes:30,details:"Bane 32 x 50 m. Back spiller kant foran figur, støtte inn til midtbane, og midtbane trer kant i bakrom. Fem meter langs linjen er fredet ved direkte pasning.",coaching:"Kant løfter blikket før innlegg. Spiss og motsatt kant fyller boksen. Sentral midtbane følger opp for andreball."},
-{title:"Storspill",minutes:30,details:"Kampsimulering på 64 x 50 m. Fredede kanter fjernes. Mål teller bare når alle utespillere er over midtstreken.",coaching:"Stopperne styrer linjen høyt. Keeper står som sweeper rundt 16-meteren og plukker lange baller."}]};
+const $=id=>document.getElementById(id);
+let currentUser=null;
+let sessions=[];
+let selectedSessionId=null;
+let currentFilter="upcoming";
+let wishesUnsub=null;
 
-const el=id=>document.getElementById(id);let currentUser=null;
-function isoWeek(date=new Date()){const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));const start=new Date(Date.UTC(d.getUTCFullYear(),0,1));return Math.ceil((((d-start)/86400000)+1)/7)}
-function setupWeeks(){const current=isoWeek();for(let offset=-2;offset<=8;offset++){const week=current+offset,option=document.createElement("option");option.value=`week${week}`;option.textContent=offset===0?`Denne uken · uke ${week}`:`Uke ${week}`;el("weekSelect").appendChild(option)}el("weekSelect").value=`week${current}`}
-function addSection(section={}){const node=el("sectionTemplate").content.firstElementChild.cloneNode(true);node.querySelector(".partTitle").value=section.title||"";node.querySelector(".partMinutes").value=section.minutes??10;node.querySelector(".partDetails").value=section.details||"";node.querySelector(".partCoaching").value=section.coaching||"";node.querySelector(".removePart").onclick=()=>{node.remove();renumber();updateTotal()};node.querySelector(".partMinutes").oninput=updateTotal;el("sections").appendChild(node);renumber();updateTotal()}
-function renumber(){[...el("sections").children].forEach((node,index)=>node.querySelector(".partNumber").textContent=String(index+1).padStart(2,"0"))}
-function updateTotal(){el("totalMinutes").textContent=[...document.querySelectorAll(".partMinutes")].reduce((sum,input)=>sum+(Number(input.value)||0),0)}
-function blankPlan(){return{title:"Ny treningsøkt",date:new Date().toISOString().slice(0,10),focus:"",intro:"",progression:"",sections:[]}}
-function render(plan){el("titleInput").value=plan.title||"";el("dateInput").value=plan.date||"";el("focusInput").value=plan.focus||"";el("introInput").value=plan.intro||"";el("progressionInput").value=plan.progression||"";el("sections").innerHTML="";(plan.sections||[]).forEach(addSection);updateTotal()}
-function collect(){return{title:el("titleInput").value.trim(),date:el("dateInput").value,focus:el("focusInput").value.trim(),intro:el("introInput").value.trim(),progression:el("progressionInput").value.trim(),sections:[...el("sections").children].map(node=>({title:node.querySelector(".partTitle").value.trim(),minutes:Number(node.querySelector(".partMinutes").value)||0,details:node.querySelector(".partDetails").value.trim(),coaching:node.querySelector(".partCoaching").value.trim()}))}}
-async function loadPlan(){document.body.classList.add("loading");el("saveStatus").textContent="Henter …";try{const snap=await getDoc(doc(db,"weeklyExercises",el("weekSelect").value));if(snap.exists()&&Array.isArray(snap.data().sections))render(snap.data());else if(el("weekSelect").value===`week${isoWeek(new Date("2026-09-02T12:00:00"))}`)render(seededPlan);else render(blankPlan());el("saveStatus").textContent=snap.exists()?"Lagret plan":"Ikke lagret"}catch(error){console.error(error);el("saveStatus").textContent="Kunne ikke hente"}finally{document.body.classList.remove("loading")}}
-el("planForm").onsubmit=async event=>{event.preventDefault();if(!currentUser)return;el("saveBtn").disabled=true;el("saveStatus").textContent="Lagrer …";try{const plan=collect();await setDoc(doc(db,"weeklyExercises",el("weekSelect").value),{...plan,exercises:plan.sections.map(section=>({title:section.title,video:""})),updatedAt:serverTimestamp(),updatedBy:currentUser.uid},{merge:true});el("saveStatus").textContent="Lagret nå";el("saveStatus").classList.add("saved")}catch(error){console.error(error);el("saveStatus").textContent="Lagring feilet";alert("Planen kunne ikke lagres. Kontroller Firestore-tilgangen.")}finally{el("saveBtn").disabled=false}};
-el("weekSelect").onchange=loadPlan;el("addSectionBtn").onclick=()=>addSection();el("newPlanBtn").onclick=()=>{if(confirm("Starte med en tom plan for denne uken?"))render(blankPlan())};setupWeeks();
-onAuthStateChanged(auth,async user=>{if(!user){location.href="./index.html";return}const profile=await getDoc(doc(db,"users",user.uid));if(!profile.exists()||profile.data().role!=="coach"){alert("Kun trener har tilgang.");location.href="./fremside.html";return}currentUser=user;await loadPlan()});
+const emptySession=()=>({
+  title:"Ny treningsøkt",
+  date:new Date().toISOString().slice(0,10),
+  focus:"",
+  intro:"",
+  published:false,
+  sections:[]
+});
+
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtDate=value=>{
+  if(!value)return{day:"—",month:"",long:"Ingen dato"};
+  const d=new Date(value+"T12:00:00");
+  return{
+    day:String(d.getDate()).padStart(2,"0"),
+    month:d.toLocaleDateString("no-NO",{month:"short"}).replace(".","").toUpperCase(),
+    long:d.toLocaleDateString("no-NO",{weekday:"long",day:"numeric",month:"long"})
+  };
+};
+const totalMinutes=plan=>(plan.sections||[]).reduce((sum,s)=>sum+(Number(s.minutes)||0),0);
+
+function renumber(){
+  [...$("sections").children].forEach((node,index)=>node.querySelector(".partNumber").textContent=String(index+1).padStart(2,"0"));
+}
+function addSection(section={}){
+  const node=$("sectionTemplate").content.firstElementChild.cloneNode(true);
+  node.querySelector(".partTitle").value=section.title||"";
+  node.querySelector(".partMinutes").value=section.minutes??10;
+  node.querySelector(".partDetails").value=section.details||"";
+  node.querySelector(".partCoaching").value=section.coaching||"";
+  node.querySelector(".partPresentation").value=section.presentationUrl||"";
+  node.querySelector(".removePart").onclick=()=>{node.remove();renumber()};
+  node.querySelector(".up").onclick=()=>{const prev=node.previousElementSibling;if(prev){node.parentElement.insertBefore(node,prev);renumber()}};
+  node.querySelector(".down").onclick=()=>{const next=node.nextElementSibling;if(next){node.parentElement.insertBefore(next,node);renumber()}};
+  $("sections").appendChild(node);renumber();
+}
+function collect(){
+  return{
+    title:$("titleInput").value.trim(),
+    date:$("dateInput").value,
+    focus:$("focusInput").value.trim(),
+    intro:$("introInput").value.trim(),
+    sections:[...$("sections").children].map(node=>({
+      title:node.querySelector(".partTitle").value.trim(),
+      minutes:Number(node.querySelector(".partMinutes").value)||0,
+      details:node.querySelector(".partDetails").value.trim(),
+      coaching:node.querySelector(".partCoaching").value.trim(),
+      presentationUrl:node.querySelector(".partPresentation").value.trim()
+    }))
+  };
+}
+function renderEditor(plan){
+  $("editorEmpty").hidden=true;$("sessionForm").hidden=false;
+  $("titleInput").value=plan.title||"";
+  $("dateInput").value=plan.date||"";
+  $("focusInput").value=plan.focus||"";
+  $("introInput").value=plan.intro||"";
+  $("sections").innerHTML="";
+  (plan.sections||[]).forEach(addSection);
+  $("editorHeading").textContent=plan.title||"Ny trening";
+  updatePublishUI(plan.published===true);
+}
+function updatePublishUI(published){
+  $("publishBadge").textContent=published?"PUBLISERT":"KLADD";
+  $("publishBadge").className="statusBadge "+(published?"published":"draft");
+  $("publishTitle").textContent=published?"Synlig for spillerne":"Ikke publisert";
+  $("publishText").textContent=published?"Spillerne kan lese denne økten på siden Trening.":"Spillerne kan ikke se denne økten før du publiserer den.";
+  $("publishBtn").textContent=published?"Trekk tilbake":"Publiser til spillerne";
+}
+function filteredSessions(){
+  const today=new Date().toISOString().slice(0,10);
+  return sessions.filter(s=>{
+    if(currentFilter==="draft")return !s.published;
+    if(currentFilter==="upcoming")return (s.date||"9999-99-99")>=today;
+    return true;
+  }).sort((a,b)=>(a.date||"9999").localeCompare(b.date||"9999"));
+}
+function renderSessions(){
+  const list=filteredSessions();
+  $("sessionsList").innerHTML=list.length?list.map(s=>{
+    const d=fmtDate(s.date);
+    return `<button class="sessionRow ${s.id===selectedSessionId?"active":""}" data-id="${s.id}" type="button">
+      <span class="sessionDate"><b>${d.day}</b><small>${d.month}</small></span>
+      <span class="sessionMain"><strong>${esc(s.title||"Uten navn")}</strong><span>${esc(s.focus||d.long)} · ${totalMinutes(s)} min</span></span>
+      <span class="sessionState ${s.published?"published":""}">${s.published?"PUB":"KLADD"}</span>
+    </button>`;
+  }).join(""):'<div class="emptyState">Ingen treninger her ennå.</div>';
+  document.querySelectorAll(".sessionRow").forEach(btn=>btn.onclick=()=>selectSession(btn.dataset.id));
+}
+async function loadSessions(){
+  $("saveStatus").textContent="Henter …";
+  try{
+    const snap=await getDocs(collection(db,"trainingSessions"));
+    sessions=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderSessions();
+    if(selectedSessionId){
+      const current=sessions.find(s=>s.id===selectedSessionId);
+      if(current)renderEditor(current);
+    }
+    $("saveStatus").textContent="Oppdatert";
+  }catch(e){console.error(e);$("saveStatus").textContent="Kunne ikke hente";}
+}
+function selectSession(id){
+  selectedSessionId=id;
+  const plan=sessions.find(s=>s.id===id);
+  if(!plan)return;
+  renderEditor(plan);renderSessions();
+  window.scrollTo({top:Math.min(window.scrollY,260),behavior:"smooth"});
+}
+async function createSession(){
+  if(!currentUser)return;
+  $("saveStatus").textContent="Oppretter …";
+  const plan=emptySession();
+  try{
+    const ref=await addDoc(collection(db,"trainingSessions"),{
+      ...plan,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedBy:currentUser.uid
+    });
+    selectedSessionId=ref.id;
+    await loadSessions();
+    selectSession(ref.id);
+    $("titleInput").focus();
+  }catch(e){console.error(e);alert("Kunne ikke opprette trening. Firestore-reglene må tillate trainingSessions.");}
+}
+async function saveSession(publishValue){
+  if(!currentUser||!selectedSessionId)return;
+  const existing=sessions.find(s=>s.id===selectedSessionId);
+  if(!existing)return;
+  const plan=collect();
+  if(!plan.title||!plan.date){alert("Fyll inn navn og dato.");return}
+  const published=publishValue??existing.published===true;
+  $("saveStatus").textContent="Lagrer …";
+  document.body.classList.add("loading");
+  try{
+    await setDoc(doc(db,"trainingSessions",selectedSessionId),{
+      ...plan,
+      published,
+      updatedAt:serverTimestamp(),
+      updatedBy:currentUser.uid,
+      ...(published&&!existing.published?{publishedAt:serverTimestamp()}: {})
+    },{merge:true});
+    $("saveStatus").textContent=published?"Publisert":"Lagret";
+    $("saveStatus").classList.add("saved");
+    await loadSessions();
+    selectSession(selectedSessionId);
+  }catch(e){console.error(e);$("saveStatus").textContent="Lagring feilet";alert("Kunne ikke lagre. Kontroller Firestore-reglene.")}
+  finally{document.body.classList.remove("loading")}
+}
+async function duplicateSession(){
+  const source=collect();
+  if(!currentUser)return;
+  try{
+    const ref=await addDoc(collection(db,"trainingSessions"),{
+      ...source,title:(source.title||"Trening")+" – kopi",published:false,
+      createdAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedBy:currentUser.uid
+    });
+    selectedSessionId=ref.id;await loadSessions();selectSession(ref.id);
+  }catch(e){console.error(e);alert("Kunne ikke duplisere treningen.")}
+}
+async function deleteSession(){
+  if(!selectedSessionId||!confirm("Slette denne treningen?"))return;
+  try{
+    await deleteDoc(doc(db,"trainingSessions",selectedSessionId));
+    selectedSessionId=null;$("sessionForm").hidden=true;$("editorEmpty").hidden=false;await loadSessions();
+  }catch(e){console.error(e);alert("Kunne ikke slette treningen.")}
+}
+
+function renderWishes(items){
+  const statusLabel={new:"Ny",considering:"Vurderes",planned:"Planlagt",used:"Brukt"};
+  const fresh=items.filter(w=>w.status==="new").length;
+  $("wishCount").textContent=`${fresh} nye`;
+  $("wishesList").innerHTML=items.length?items.map(w=>`<article class="wishCard">
+    <div class="wishMeta"><strong>${esc(w.playerName||"Spiller")}</strong><span>${w.createdAt?.toDate?w.createdAt.toDate().toLocaleDateString("no-NO"):""}</span></div>
+    <span class="wishCategory">${esc(w.category||"Ønske")}</span>
+    <p>${esc(w.text||"")}</p>
+    <div class="wishActions">${["new","considering","planned","used"].map(status=>`<button data-id="${w.id}" data-status="${status}" class="${w.status===status?"active":""}" type="button">${statusLabel[status]}</button>`).join("")}</div>
+  </article>`).join(""):'<div class="emptyState">Ingen treningsønsker ennå.</div>';
+  document.querySelectorAll(".wishActions button").forEach(btn=>btn.onclick=async()=>{
+    try{await updateDoc(doc(db,"trainingWishes",btn.dataset.id),{status:btn.dataset.status,updatedAt:serverTimestamp(),updatedBy:currentUser.uid})}
+    catch(e){console.error(e);alert("Kunne ikke oppdatere ønsket.")}
+  });
+}
+function startWishes(){
+  wishesUnsub?.();
+  wishesUnsub=onSnapshot(collection(db,"trainingWishes"),snap=>{
+    const items=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    renderWishes(items);
+  },e=>{console.error(e);$("wishesList").innerHTML='<div class="emptyState">Kunne ikke hente ønsker. Firestore-reglene må oppdateres.</div>'});
+}
+
+$("newSessionBtn").onclick=createSession;
+$("refreshSessionsBtn").onclick=loadSessions;
+$("addSectionBtn").onclick=()=>addSection();
+$("sessionForm").onsubmit=e=>{e.preventDefault();saveSession()};
+$("publishBtn").onclick=()=>{
+  const existing=sessions.find(s=>s.id===selectedSessionId);
+  saveSession(!(existing?.published===true));
+};
+$("duplicateBtn").onclick=duplicateSession;
+$("deleteBtn").onclick=deleteSession;
+document.querySelectorAll(".filterChip").forEach(btn=>btn.onclick=()=>{
+  currentFilter=btn.dataset.filter;
+  document.querySelectorAll(".filterChip").forEach(x=>x.classList.toggle("active",x===btn));
+  renderSessions();
+});
+
+onAuthStateChanged(auth,async user=>{
+  wishesUnsub?.();wishesUnsub=null;
+  if(!user){location.href="./index.html";return}
+  const profile=await getDoc(doc(db,"users",user.uid));
+  if(!profile.exists()||profile.data().role!=="coach"){alert("Kun trener har tilgang.");location.href="./fremside.html";return}
+  currentUser=user;
+  await loadSessions();
+  startWishes();
+});
