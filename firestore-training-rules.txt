@@ -1,0 +1,37 @@
+// Merge this block inside service cloud.firestore { match /databases/{database}/documents { ... } }
+// It uses the same Firebase project as coachtool1 and spillerportal.
+
+function trainingIsCoach() {
+  return request.auth != null
+    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach";
+}
+
+function trainingPlayerAccount() {
+  return get(/databases/$(database)/documents/playerAccounts/$(request.auth.uid));
+}
+
+function trainingApprovedPlayer() {
+  return request.auth != null
+    && trainingPlayerAccount().data.approved == true
+    && trainingPlayerAccount().data.playerId != null;
+}
+
+match /trainingSessions/{sessionId} {
+  allow read: if trainingIsCoach()
+    || (trainingApprovedPlayer() && resource.data.published == true);
+  allow create, update, delete: if trainingIsCoach();
+}
+
+match /trainingWishes/{wishId} {
+  allow create: if trainingApprovedPlayer()
+    && request.resource.data.uid == request.auth.uid
+    && request.resource.data.playerId == trainingPlayerAccount().data.playerId
+    && request.resource.data.status == "new";
+
+  allow read: if trainingIsCoach()
+    || (trainingApprovedPlayer()
+      && resource.data.uid == request.auth.uid
+      && resource.data.playerId == trainingPlayerAccount().data.playerId);
+
+  allow update, delete: if trainingIsCoach();
+}
