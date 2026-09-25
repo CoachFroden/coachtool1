@@ -11,6 +11,7 @@ let sessions=[];
 let selectedSessionId=null;
 let currentFilter="upcoming";
 let wishesUnsub=null;
+let pendingTacticImport=null;
 
 const emptySession=()=>({
   title:"Ny treningsøkt",
@@ -33,6 +34,54 @@ const fmtDate=value=>{
 };
 const totalMinutes=plan=>(plan.sections||[]).reduce((sum,s)=>sum+(Number(s.minutes)||0),0);
 
+function decodeTransferPayload(value){
+  const normalized=value.replace(/-/g,"+").replace(/_/g,"/");
+  const padded=normalized+"=".repeat((4-(normalized.length%4||4))%4);
+  const binary=atob(padded);
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+function readTacticImport(){
+  const params=new URLSearchParams(location.hash.replace(/^#/,""));
+  const encoded=params.get("tacticImport");
+  if(!encoded)return;
+  try{
+    const payload=decodeTransferPayload(encoded);
+    if(payload?.version!==1||!Array.isArray(payload.scenes)||!payload.scenes.length)throw new Error("Ugyldig presentasjon");
+    pendingTacticImport=payload;
+    history.replaceState({},document.title,location.pathname+location.search);
+  }catch(e){
+    console.error("Taktikkimport:",e);
+    alert("Kunne ikke lese presentasjonen fra taktikktavlen.");
+  }
+}
+readTacticImport();
+
+function updatePresentationStatus(node){
+  const state=node.querySelector(".presentationState");
+  const help=node.querySelector(".presentationHelp");
+  const remove=node.querySelector(".removePresentation");
+  if(node._presentation){
+    state.textContent="✓ "+(node._presentation.title||"Taktikktavle koblet");
+    state.classList.add("linked");
+    help.textContent="Spillerne får denne i ren Presenter-visning.";
+    remove.hidden=false;
+    return;
+  }
+  if(node._presentationUrl){
+    state.textContent="Ekstern presentasjon koblet";
+    state.classList.add("linked");
+    help.textContent="Eldre presentasjonslenke beholdes.";
+    remove.hidden=false;
+    return;
+  }
+  state.textContent="Ingen presentasjon koblet";
+  state.classList.remove("linked");
+  help.textContent="Åpne taktikktavlen, velg Presenter og trykk «Legg til i trening».";
+  remove.hidden=true;
+}
+
 function renumber(){
   [...$("sections").children].forEach((node,index)=>node.querySelector(".partNumber").textContent=String(index+1).padStart(2,"0"));
 }
@@ -42,7 +91,14 @@ function addSection(section={}){
   node.querySelector(".partMinutes").value=section.minutes??10;
   node.querySelector(".partDetails").value=section.details||"";
   node.querySelector(".partCoaching").value=section.coaching||"";
-  node.querySelector(".partPresentation").value=section.presentationUrl||"";
+  node._presentation=section.presentation||null;
+  node._presentationUrl=section.presentationUrl||"";
+  node.querySelector(".removePresentation").onclick=()=>{
+    node._presentation=null;
+    node._presentationUrl="";
+    updatePresentationStatus(node);
+  };
+  updatePresentationStatus(node);
   node.querySelector(".removePart").onclick=()=>{node.remove();renumber()};
   node.querySelector(".up").onclick=()=>{const prev=node.previousElementSibling;if(prev){node.parentElement.insertBefore(node,prev);renumber()}};
   node.querySelector(".down").onclick=()=>{const next=node.nextElementSibling;if(next){node.parentElement.insertBefore(next,node);renumber()}};
@@ -59,7 +115,8 @@ function collect(){
       minutes:Number(node.querySelector(".partMinutes").value)||0,
       details:node.querySelector(".partDetails").value.trim(),
       coaching:node.querySelector(".partCoaching").value.trim(),
-      presentationUrl:node.querySelector(".partPresentation").value.trim()
+      presentation:node._presentation||null,
+      presentationUrl:node._presentationUrl||""
     }))
   };
 }
@@ -112,6 +169,7 @@ async function loadSessions(){
       if(current)renderEditor(current);
     }
     $("saveStatus").textContent="Oppdatert";
+    if(pendingTacticImport&&$("tacticImportModal").hidden)openTacticImport();
   }catch(e){console.error(e);$("saveStatus").textContent="Kunne ikke hente";}
 }
 function selectSession(id){
@@ -178,6 +236,79 @@ async function deleteSession(){
   }catch(e){console.error(e);alert("Kunne ikke slette treningen.")}
 }
 
+function tacticSessionOptions(){
+  const sorted=[...sessions].sort((a,b)=>(a.date||"9999").localeCompare(b.date||"9999"));
+  return sorted.map(s=>`<option value="${s.id}">${esc(fmtDate(s.date).long)} · ${esc(s.title||"Trening")}${s.published?" · publisert":""}</option>`).join("");
+}
+function updateTacticPartOptions(){
+  const session=sessions.find(s=>s.id===$("tacticSessionSelect").value);
+  const select=$("tacticPartSelect");
+  if(!session){select.innerHTML='<option value="__new__">+ Ny øvelse fra presentasjonen</option>';return}
+  const parts=(session.sections||[]).map((part,index)=>`<option value="${index}">${index+1}. ${esc(part.title||"Øvelse")}</option>`).join("");
+  select.innerHTML='<option value="__new__">+ Ny øvelse fra presentasjonen</option>'+parts;
+}
+function openTacticImport(){
+  if(!pendingTacticImport)return;
+  if(!sessions.length){
+    alert("Opprett en trening først. Presentasjonen ligger klar så lenge du blir på denne siden.");
+    return;
+  }
+  $("tacticImportName").textContent=pendingTacticImport.title||"Taktikkpresentasjon";
+  $("tacticSessionSelect").innerHTML=tacticSessionOptions();
+  if(selectedSessionId&&sessions.some(s=>s.id===selectedSessionId))$("tacticSessionSelect").value=selectedSessionId;
+  updateTacticPartOptions();
+  $("tacticImportModal").hidden=false;
+}
+function closeTacticImport(clear=true){
+  $("tacticImportModal").hidden=true;
+  if(clear)pendingTacticImport=null;
+}
+async function attachTacticImport(){
+  if(!pendingTacticImport||!currentUser)return;
+  const sessionId=$("tacticSessionSelect").value;
+  const session=sessions.find(s=>s.id===sessionId);
+  if(!session)return alert("Velg en trening.");
+  const partValue=$("tacticPartSelect").value;
+  const sections=JSON.parse(JSON.stringify(session.sections||[]));
+  const presentation=JSON.parse(JSON.stringify(pendingTacticImport));
+  if(partValue==="__new__"){
+    sections.push({
+      title:presentation.title||"Taktikkøvelse",
+      minutes:10,
+      details:"",
+      coaching:"",
+      presentation,
+      presentationUrl:""
+    });
+  }else{
+    const index=Number(partValue);
+    if(!Number.isInteger(index)||!sections[index])return alert("Velg en gyldig øvelse.");
+    sections[index]={...sections[index],presentation,presentationUrl:""};
+  }
+
+  const btn=$("attachTacticImport");
+  btn.disabled=true;btn.textContent="Legger til …";
+  try{
+    await updateDoc(doc(db,"trainingSessions",sessionId),{
+      sections,
+      updatedAt:serverTimestamp(),
+      updatedBy:currentUser.uid
+    });
+    pendingTacticImport=null;
+    $("tacticImportModal").hidden=true;
+    selectedSessionId=sessionId;
+    await loadSessions();
+    selectSession(sessionId);
+    $("saveStatus").textContent="Presentasjon lagt til";
+    $("saveStatus").classList.add("saved");
+  }catch(e){
+    console.error(e);
+    alert("Kunne ikke legge presentasjonen til treningen.");
+  }finally{
+    btn.disabled=false;btn.textContent="Legg til i trening";
+  }
+}
+
 function renderWishes(items){
   const statusLabel={new:"Ny",considering:"Vurderes",planned:"Planlagt",used:"Brukt"};
   const fresh=items.filter(w=>w.status==="new").length;
@@ -203,6 +334,10 @@ function startWishes(){
 
 $("newSessionBtn").onclick=createSession;
 $("refreshSessionsBtn").onclick=loadSessions;
+$("tacticSessionSelect").onchange=updateTacticPartOptions;
+$("closeTacticImport").onclick=()=>closeTacticImport(true);
+$("cancelTacticImport").onclick=()=>closeTacticImport(true);
+$("attachTacticImport").onclick=attachTacticImport;
 $("addSectionBtn").onclick=()=>addSection();
 $("sessionForm").onsubmit=e=>{e.preventDefault();saveSession()};
 $("publishBtn").onclick=()=>{
