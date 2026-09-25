@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#07111d">
   <title>Treningsplanlegger · Samnanger G14</title>
-  <link rel="stylesheet" href="ukens-ovelser.css?v=20260925-traininghub1">
+  <link rel="stylesheet" href="ukens-ovelser.css?v=20260925-tacticimport1">
 </head>
 <body>
   <main class="plannerShell">
@@ -92,6 +92,30 @@
     </section>
   </main>
 
+  <div id="tacticImportModal" class="tacticImportModal" hidden>
+    <div class="tacticImportCard" role="dialog" aria-modal="true" aria-labelledby="tacticImportTitle">
+      <div class="tacticImportHead">
+        <div>
+          <span class="eyebrow">TAKTIKKTAVLE</span>
+          <h2 id="tacticImportTitle">Legg presentasjon til trening</h2>
+          <p id="tacticImportName">Presentasjon mottatt</p>
+        </div>
+        <button id="closeTacticImport" class="iconButton" type="button" aria-label="Lukk">×</button>
+      </div>
+      <label>Velg trening
+        <select id="tacticSessionSelect"></select>
+      </label>
+      <label>Velg øvelse / del
+        <select id="tacticPartSelect"></select>
+      </label>
+      <p class="tacticImportHint">Presentasjonen blir lagret sammen med treningen og vises kun som lesbar presentasjon for spillerne.</p>
+      <div class="tacticImportActions">
+        <button id="cancelTacticImport" class="secondary" type="button">Avbryt</button>
+        <button id="attachTacticImport" class="primary" type="button">Legg til i trening</button>
+      </div>
+    </div>
+  </div>
+
   <template id="sectionTemplate">
     <article class="sessionPart">
       <div class="partNumber"></div>
@@ -107,14 +131,20 @@
           <label>Gjennomføring<textarea class="partDetails" rows="3" maxlength="1200" placeholder="Organisering og hva spillerne skal gjøre."></textarea></label>
           <label>Coachingpunkter<textarea class="partCoaching" rows="3" maxlength="900" placeholder="Hva skal du coache på?"></textarea></label>
         </div>
-        <label class="presentationField">Taktikktavle / presentasjon
-          <input class="partPresentation" type="url" placeholder="https://… (valgfritt)">
-          <small>Vises som «Åpne presentasjon» på spillernes side.</small>
-        </label>
+        <div class="presentationField">
+          <div class="presentationFieldHead">
+            <div>
+              <span>TAKTIKKTAVLE</span>
+              <strong class="presentationState">Ingen presentasjon koblet</strong>
+              <small class="presentationHelp">Åpne taktikktavlen, velg Presenter og trykk «Legg til i trening».</small>
+            </div>
+            <button class="removePresentation secondary" type="button" hidden>Fjern</button>
+          </div>
+        </div>
       </div>
     </article>
   </template>
 
-  <script type="module" src="training-planner.js?v=20260925-traininghub1"></script>
+  <script type="module" src="training-planner.js?v=20260925-tacticimport1"></script>
 </body>
 </html>
