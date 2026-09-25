@@ -1205,7 +1205,11 @@ exports.sendPortalPasswordReset = onCall({
   let user;
   try {
     user = await admin.auth().getUserByEmail(email);
-    resetUrl = await admin.auth().generatePasswordResetLink(email);
+    const firebaseResetUrl = await admin.auth().generatePasswordResetLink(email);
+    const firebaseReset = new URL(firebaseResetUrl);
+    const oobCode = firebaseReset.searchParams.get("oobCode");
+    if (!oobCode) throw new Error("Firebase reset link mangler oobCode.");
+    resetUrl = `https://coachfroden.github.io/spillerportal/reset-passord.html?oobCode=${encodeURIComponent(oobCode)}`;
   } catch (error) {
     if (error?.code === "auth/user-not-found") {
       return { success: true };
