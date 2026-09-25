@@ -14,6 +14,54 @@ function openGuardianRemoveModal(g,playerId,player){const modal=$("guardianRemov
 function closeGuardianRemoveModal(){const modal=$("guardianRemoveModal");modal.classList.remove("open");modal.setAttribute("aria-hidden","true");delete modal.dataset.guardian;delete modal.dataset.player}
 async function confirmGuardianRemove(){const modal=$("guardianRemoveModal"),uid=modal.dataset.guardian,g=guardianAccounts.find(x=>x.uid===uid);if(!g)return closeGuardianRemoveModal();const btn=$("guardianRemoveConfirm");btn.disabled=true;btn.textContent="Sletter…";try{const fn=httpsCallable(guardianFunctions,"deleteGuardianAccount");await fn({guardianUid:uid});closeGuardianRemoveModal();await load()}catch(err){console.error("deleteGuardianAccount:",err);alert(err?.message||"Kunne ikke slette foresattkontoen.")}finally{btn.disabled=false;btn.textContent="Slett foresatt"}}
 
+function openCoachGuardianForm(e){
+ const section=e.currentTarget.closest(".hubGuardianSection");
+ if(!section)return;
+ const form=section.querySelector(".coachGuardianForm");
+ if(!form)return;
+ form.hidden=false;
+ e.currentTarget.hidden=true;
+ form.querySelector(".coachGuardianName")?.focus();
+}
+function cancelCoachGuardianForm(e){
+ const form=e.currentTarget.closest(".coachGuardianForm");
+ if(!form)return;
+ form.hidden=true;
+ form.querySelector(".coachGuardianName").value="";
+ form.querySelector(".coachGuardianEmail").value="";
+ const section=form.closest(".hubGuardianSection");
+ const openButton=section?.querySelector(".addGuardianByCoach");
+ if(openButton)openButton.hidden=false;
+}
+async function sendCoachGuardianInvite(e){
+ const btn=e.currentTarget;
+ const form=btn.closest(".coachGuardianForm");
+ if(!form)return;
+ const playerId=btn.dataset.player;
+ const guardianName=form.querySelector(".coachGuardianName").value.trim();
+ const guardianEmail=form.querySelector(".coachGuardianEmail").value.trim().toLowerCase();
+ if(guardianName.length<2)return alert("Skriv inn navnet på foresatte.");
+ if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guardianEmail))return alert("Skriv inn en gyldig e-postadresse.");
+ if(!confirm("Sende foresattinvitasjon til "+guardianName+" ("+guardianEmail+") for "+playerName(playerId)+"?"))return;
+
+ btn.disabled=true;
+ btn.textContent="Sender…";
+ try{
+   const fn=httpsCallable(guardianFunctions,"createGuardianInvite");
+   const result=await fn({playerId,guardianName,guardianEmail});
+   form.hidden=true;
+   form.querySelector(".coachGuardianName").value="";
+   form.querySelector(".coachGuardianEmail").value="";
+   alert("Invitasjonen er sendt til "+(result.data?.email||guardianEmail)+".");
+ }catch(err){
+   console.error("createGuardianInvite:",err);
+   alert(err?.message||"Kunne ikke sende foresattinvitasjonen.");
+ }finally{
+   btn.disabled=false;
+   btn.textContent="Send invitasjon";
+ }
+}
+
 function render(){
 const pending=accounts.filter(a=>!a.approved&&!a.rejected);
 const pendingToggle=$("pendingToggle"),pendingSection=$("pendingSection"),pendingBadge=$("pendingBadge");
@@ -35,6 +83,9 @@ document.querySelectorAll(".editConversationTitle").forEach(b=>b.onclick=editCon
 document.querySelectorAll(".approveGuardianRequest").forEach(b=>b.onclick=approveGuardianRequest);
 document.querySelectorAll(".rejectGuardianRequest").forEach(b=>b.onclick=rejectGuardianRequest);
 document.querySelectorAll(".removeGuardianLink").forEach(b=>b.onclick=removeGuardianPlayerLink);
+document.querySelectorAll(".addGuardianByCoach").forEach(b=>b.onclick=openCoachGuardianForm);
+document.querySelectorAll(".cancelCoachGuardian").forEach(b=>b.onclick=cancelCoachGuardianForm);
+document.querySelectorAll(".sendCoachGuardian").forEach(b=>b.onclick=sendCoachGuardianInvite);
 }
 function renderPlayerHub(){
  const root=$("playerHub");if(!root)return;
@@ -43,6 +94,7 @@ function renderPlayerHub(){
   const acc=accounts.find(a=>a.approved&&a.playerId===p.id);
   const gs=guardianAccounts.filter(g=>(g.playerIds||[]).includes(p.id));
   const gr=guardianRequests.filter(r=>r.playerId===p.id&&r.status==="pending");
+  const sentInvites=guardianRequests.filter(r=>r.playerId===p.id&&r.status==="approved"&&!r.inviteUsed);
   const open=requests.filter(r=>r.playerId===p.id||(acc&&r.uid===acc.uid));
   const archiveCount=allRequests.filter(r=>(r.playerId===p.id||(acc&&r.uid===acc.uid))&&r.status!=="open").length;
   const pendingPlayerApproval=0;
@@ -57,10 +109,12 @@ function renderPlayerHub(){
     return r.startedBy!=="coach"&&!reopenedByCoach;
   }).length;
   const needs=pendingPlayerApproval+gr.length+unansweredPlayerMessages;
-  const guardianHtml=gs.length?gs.map(g=>'<div class="hubGuardianRow"><div><strong>'+esc(g.name||"Foresatt")+'</strong><span>'+esc(g.email||"")+'</span></div><span class="badge '+(g.approved?"ok":"")+'">'+(g.approved?"AKTIV":"VENTER")+'</span><button class="removeGuardianLink danger" data-guardian="'+g.uid+'" data-player="'+p.id+'">Slett foresatt</button></div>').join(""):'<p class="hubEmpty">Ingen aktive foresatte.</p>';
+  const guardianHtml=gs.length?gs.map(g=>'<div class="hubGuardianRow"><div><strong>'+esc(g.name||"Foresatt")+'</strong><span>'+esc(g.email||"")+'</span></div><span class="badge ok">AKTIV</span><button class="removeGuardianLink danger" data-guardian="'+g.uid+'" data-player="'+p.id+'">Slett foresatt</button></div>').join(""):'<p class="hubEmpty">Ingen aktive foresatte.</p>';
+  const sentInviteHtml=sentInvites.map(r=>'<div class="hubGuardianInvite"><div><strong>'+esc(r.guardianName||"Foresatt")+'</strong><span>'+esc(r.guardianEmail||"")+'</span></div><span class="guardianInviteSent">INVITASJON SENDT</span></div>').join("");
+  const coachGuardianForm='<button class="addGuardianByCoach" type="button" data-player="'+p.id+'">＋ Legg til foresatt</button><div class="coachGuardianForm" hidden><div class="coachGuardianFields"><label>Navn<input class="coachGuardianName" type="text" maxlength="80" placeholder="Navn på foresatt"></label><label>E-post<input class="coachGuardianEmail" type="email" placeholder="navn@epost.no"></label></div><div class="coachGuardianActions"><button class="cancelCoachGuardian" type="button">Avbryt</button><button class="sendCoachGuardian" type="button" data-player="'+p.id+'">Send invitasjon</button></div></div>';
   const requestHtml=gr.length?gr.map(r=>'<div class="hubPendingGuardian"><div><strong>'+esc(r.guardianName||"Foresatt")+'</strong><span>'+esc(r.guardianEmail||"")+'</span></div><button class="approveGuardianRequest" data-request="'+r.id+'">Godkjenn</button><button class="rejectGuardianRequest danger" data-request="'+r.id+'">Avvis</button></div>').join(""):'<p class="hubEmpty">Ingen foresattforespørsler venter.</p>';
   const conversationHtml=open.length?open.map(r=>{const thread=messages.filter(m=>m.requestId===r.id).sort((a,b)=>ts(a.createdAt)-ts(b.createdAt)),last=thread[thread.length-1],waiting=thread.length?last.senderRole==="player":r.startedBy!=="coach"||r.reopenedBy==="player";return '<div class="hubConversation'+(waiting?' hubConversationUnread':'')+'"><div><strong>'+(waiting?'💬 Ny melding fra '+esc(acc?.name||p.navn||p.name)+' · ':'')+esc(r.title||"Utviklingssamtale")+'</strong><span>'+esc(dateText(r.createdAt))+'</span>'+(r.reopenedAt?'<span class="hubReopened">↻ '+esc(r.reopenedBy==="player"?(acc.name||p.navn||p.name)+" åpnet samtalen igjen":"Du åpnet samtalen igjen")+'</span>':'')+'</div><span class="badge">'+(waiting?'NY':'AKTIV')+'</span>'+(acc?'<button class="communication hubOpenConversation'+(waiting?" hasUnread":"")+'" data-communication="'+acc.uid+'">Åpne samtale'+(waiting?'<span class="unreadDot">1</span>':'')+'</button>':'')+'</div>'}).join(""):'<p class="hubEmpty">Ingen aktive samtaler.</p>';
-  return '<details class="playerHubCard'+(needs?' needsAttention':'')+'"><summary><div class="playerHubName"><strong>'+esc(p.navn||p.name||p.id)+'</strong></div>'+(needs?'<span class="hubNeeds">'+needs+'</span>':'<span class="playerOkDot" title="Godkjent"></span>')+'<span class="guardianChevron">⌄</span></summary><div class="playerHubBody"><section class="hubAccountSection"><h4>Spillerkonto</h4>'+(acc?'<div class="hubAccountRow"><div><strong>'+esc(acc.name||p.navn||p.name)+'</strong><span>'+esc(acc.email||"")+'</span></div><span class="badge ok">AKTIV</span><div class="hubAccountActions"><button class="resetApproval danger" data-reset="'+acc.uid+'">Fjern godkjenning (test)</button></div></div>':'<p class="hubEmpty hubWarn">Ingen godkjent spillerkonto er koblet til denne spilleren.</p>')+'</section><section class="hubCommunicationSection"><h4>Utvikling og kommunikasjon</h4>'+conversationHtml+(acc?'<div class="hubConversationActions">'+(open.length?'':'<button class="startCoachConversation" data-uid="'+acc.uid+'">Ny samtale</button>')+'<button class="archiveOnly" data-archive="'+acc.uid+'">Arkiv ('+archiveCount+')</button></div>':'')+'</section><section class="hubGuardianSection"><h4>Foresatte <span>'+gs.length+'</span></h4>'+guardianHtml+'</section>'+(gr.length?'<section class="hubAttention"><h4>Foresattforespørsler <span>'+gr.length+'</span></h4>'+requestHtml+'</section>':'')+'</div></details>';
+  return '<details class="playerHubCard'+(needs?' needsAttention':'')+'"><summary><div class="playerHubName"><strong>'+esc(p.navn||p.name||p.id)+'</strong></div>'+(needs?'<span class="hubNeeds">'+needs+'</span>':'<span class="playerOkDot" title="Godkjent"></span>')+'<span class="guardianChevron">⌄</span></summary><div class="playerHubBody"><section class="hubAccountSection"><h4>Spillerkonto</h4>'+(acc?'<div class="hubAccountRow"><div><strong>'+esc(acc.name||p.navn||p.name)+'</strong><span>'+esc(acc.email||"")+'</span></div><span class="badge ok">AKTIV</span><div class="hubAccountActions"><button class="resetApproval danger" data-reset="'+acc.uid+'">Fjern godkjenning (test)</button></div></div>':'<p class="hubEmpty hubWarn">Ingen godkjent spillerkonto er koblet til denne spilleren.</p>')+'</section><section class="hubCommunicationSection"><h4>Utvikling og kommunikasjon</h4>'+conversationHtml+(acc?'<div class="hubConversationActions">'+(open.length?'':'<button class="startCoachConversation" data-uid="'+acc.uid+'">Ny samtale</button>')+'<button class="archiveOnly" data-archive="'+acc.uid+'">Arkiv ('+archiveCount+')</button></div>':'')+'</section><section class="hubGuardianSection"><h4>Foresatte <span>'+gs.length+'</span></h4>'+guardianHtml+sentInviteHtml+coachGuardianForm+'</section>'+(gr.length?'<section class="hubAttention"><h4>Foresattforespørsler <span>'+gr.length+'</span></h4>'+requestHtml+'</section>':'')+'</div></details>';
  }).join("")||'<p class="empty">Ingen aktive spillerbrukere ennå.</p>';
 }
 async function reopenConversation(e){const id=e.currentTarget.dataset.reopen,r=allRequests.find(x=>x.id===id);if(!r)return alert("Kunne ikke finne samtalen.");const otherOpen=allRequests.find(x=>x.id!==id&&x.status==="open"&&(x.uid===r.uid||x.playerId===r.playerId));if(otherOpen)return alert("Spilleren har allerede en aktiv samtale. Avslutt den aktive samtalen før du åpner denne igjen.");const btn=e.currentTarget;btn.disabled=true;btn.textContent="Åpner…";try{await updateDoc(doc(db,"developmentRequests",id),{status:"open",reopenedAt:serverTimestamp(),reopenedBy:"coach",reopenedByUid:auth.currentUser.uid});closeCommunication();await load()}catch(err){console.error("reopenConversation:",err);alert("Kunne ikke åpne samtalen igjen: "+(err.message||"ukjent feil"));btn.disabled=false;btn.textContent="Åpne samtalen igjen"}}
