@@ -191,3 +191,49 @@ input,select,textarea{
     padding:13px;
   }
 }
+
+
+/* 2026-09-25 symmetrical training wishes */
+.wishesList{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;
+}
+
+.wishCard{
+  width:100%;
+  min-width:0;
+}
+
+.wishesList>.wishCard:only-child{
+  grid-column:1/-1;
+}
+
+.wishMeta,
+.wishActions{
+  width:100%;
+}
+
+.wishActions{
+  justify-content:center;
+}
+
+.wishActions button{
+  flex:1 1 0;
+  min-width:90px;
+  text-align:center;
+}
+
+@media(min-width:1100px){
+  .wishesList:has(.wishCard:nth-child(3)){
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+
+@media(max-width:750px){
+  .wishesList{
+    grid-template-columns:1fr;
+  }
+  .wishesList>.wishCard:only-child{
+    grid-column:auto;
+  }
+}
