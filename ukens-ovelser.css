@@ -237,3 +237,115 @@ input,select,textarea{
     grid-column:auto;
   }
 }
+
+
+/* 2026-09-25 tactics presentation import */
+.presentationField{
+  margin-top:10px;
+  padding:10px 11px;
+  border:1px solid #27485a;
+  border-radius:11px;
+  background:#07141d;
+}
+.presentationFieldHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.presentationFieldHead>div{
+  min-width:0;
+}
+.presentationFieldHead span,
+.presentationFieldHead strong,
+.presentationFieldHead small{
+  display:block;
+}
+.presentationFieldHead span{
+  color:var(--lime);
+  font:600 8px Oswald;
+  letter-spacing:.14em;
+}
+.presentationFieldHead strong{
+  margin-top:3px;
+  color:#d8e5eb;
+  font-size:11px;
+}
+.presentationFieldHead strong.linked{
+  color:#8ef5b4;
+}
+.presentationFieldHead small{
+  margin-top:3px;
+  color:#698091;
+  font-size:9px;
+  line-height:1.35;
+  text-transform:none;
+  letter-spacing:0;
+}
+.removePresentation{
+  flex:0 0 auto;
+  padding:7px 9px;
+  font-size:9px;
+}
+.tacticImportModal{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:#02070db8;
+  backdrop-filter:blur(8px);
+}
+.tacticImportCard{
+  width:min(520px,100%);
+  border:1px solid #315064;
+  border-radius:18px;
+  padding:18px;
+  background:linear-gradient(145deg,#0e2230,#081620);
+  box-shadow:0 28px 80px #000a;
+}
+.tacticImportHead{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:14px;
+}
+.tacticImportHead h2{
+  margin:4px 0 2px;
+  font:600 24px Oswald;
+  text-transform:uppercase;
+}
+.tacticImportHead p{
+  margin:0;
+  color:#8da6b6;
+  font-size:11px;
+}
+.tacticImportCard label+label{
+  margin-top:10px;
+}
+.tacticImportHint{
+  margin:12px 0 0;
+  color:#7f96a5;
+  font-size:10px;
+  line-height:1.45;
+}
+.tacticImportActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  margin-top:15px;
+}
+@media(max-width:650px){
+  .presentationFieldHead{
+    align-items:flex-start;
+  }
+  .tacticImportModal{
+    padding:10px;
+  }
+  .tacticImportCard{
+    border-radius:14px;
+    padding:14px;
+  }
+}
