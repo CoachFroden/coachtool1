@@ -1205,9 +1205,7 @@ exports.sendPortalPasswordReset = onCall({
   let user;
   try {
     user = await admin.auth().getUserByEmail(email);
-    resetUrl = await admin.auth().generatePasswordResetLink(email, {
-      url: "https://coachfroden.github.io/spillerportal/"
-    });
+    resetUrl = await admin.auth().generatePasswordResetLink(email);
   } catch (error) {
     if (error?.code === "auth/user-not-found") {
       return { success: true };
