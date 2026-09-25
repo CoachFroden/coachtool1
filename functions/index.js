@@ -1187,6 +1187,125 @@ exports.approveGuardianInvite = onCall({
 });
 
 
+
+exports.createGuardianInvite = onCall({
+  region: "europe-west1",
+  timeoutSeconds: 30,
+  secrets: [RESEND_API_KEY]
+}, async request => {
+  await requireCoach(request.auth?.uid);
+
+  const playerId = String(request.data?.playerId || "").trim();
+  const guardianName = String(request.data?.guardianName || "").trim();
+  const email = normalizeInviteEmail(request.data?.guardianEmail);
+
+  if (!playerId) throw new HttpsError("invalid-argument", "Spiller mangler.");
+  if (guardianName.length < 2) throw new HttpsError("invalid-argument", "Skriv inn navn på foresatt.");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    throw new HttpsError("invalid-argument", "Skriv inn en gyldig e-postadresse.");
+  }
+
+  const playerSnap = await db.collection("spillere").doc(playerId).get();
+  if (!playerSnap.exists) throw new HttpsError("not-found", "Spilleren finnes ikke.");
+  const playerData = playerSnap.data() || {};
+  const playerName = playerData.navn || playerData.name || "spilleren";
+
+  const playerAccountsSnap = await db.collection("playerAccounts").where("playerId", "==", playerId).get();
+  const approvedPlayerAccount = playerAccountsSnap.docs.find(docSnap => docSnap.data()?.approved === true);
+  if (!approvedPlayerAccount) {
+    throw new HttpsError("failed-precondition", "Spilleren må ha en godkjent spillerkonto først.");
+  }
+
+  const guardianAccountsSnap = await db.collection("guardianAccounts").where("email", "==", email).get();
+  const alreadyLinked = guardianAccountsSnap.docs.some(docSnap => {
+    const ids = docSnap.data()?.playerIds;
+    return Array.isArray(ids) && ids.includes(playerId);
+  });
+  if (alreadyLinked) {
+    throw new HttpsError("already-exists", "Denne foresatte er allerede koblet til spilleren.");
+  }
+
+  const existingRequestsSnap = await db.collection("guardianRequests").where("guardianEmail", "==", email).get();
+  const existingRequest = existingRequestsSnap.docs.find(docSnap => {
+    const data = docSnap.data() || {};
+    return data.playerId === playerId && ["pending", "approved"].includes(String(data.status || ""));
+  });
+  if (existingRequest) {
+    throw new HttpsError("already-exists", "Det finnes allerede en aktiv invitasjon til denne e-postadressen.");
+  }
+
+  const token = require("crypto").randomBytes(32).toString("hex");
+  const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const requestRef = db.collection("guardianRequests").doc();
+
+  await requestRef.set({
+    playerUid: approvedPlayerAccount.id,
+    playerId,
+    playerName,
+    guardianName,
+    guardianEmail: email,
+    status: "approved",
+    source: "coach",
+    inviteToken: token,
+    inviteExpiresAt: expiresAt,
+    inviteUsed: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+    approvedBy: request.auth.uid
+  });
+
+  const inviteUrl = `https://coachfroden.github.io/spillerportal/?guardianInvite=${encodeURIComponent(token)}`;
+  const apiKey = RESEND_API_KEY.value();
+  if (!apiKey) {
+    await requestRef.delete().catch(() => {});
+    throw new HttpsError("failed-precondition", "E-posttjenesten er ikke konfigurert.");
+  }
+
+  const safe = value => String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+  const emailResponse = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": `coach-guardian-invite-${requestRef.id}-${token.slice(0,12)}`
+    },
+    body: JSON.stringify({
+      from: GUARDIAN_EMAIL_FROM,
+      to: [email],
+      subject: `Invitasjon som foresatt til ${playerName} – Samnanger G14`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#172033"><h2>Hei ${safe(guardianName)}</h2><p>Treneren i Samnanger G14 har invitert deg som foresatt til ${safe(playerName)} i spillerportalen.</p><p>Bruk knappen under for å opprette foresattkontoen eller koble en eksisterende konto. E-postadressen er låst til denne invitasjonen.</p><p style="margin:28px 0"><a href="${safe(inviteUrl)}" style="background:#0b5cff;color:white;text-decoration:none;padding:13px 20px;border-radius:8px;display:inline-block">Åpne foresattinvitasjon</a></p><p>Lenken kan brukes én gang og utløper om 7 dager.</p><p style="font-size:13px;color:#667085">Hvis du ikke har bedt om eller forventet denne invitasjonen, kan du kontakte treneren eller ignorere e-posten.</p></div>`
+    })
+  });
+
+  const emailResult = await emailResponse.json().catch(() => ({}));
+  if (!emailResponse.ok) {
+    console.error("Resend coach guardian invite failed", emailResponse.status, emailResult);
+    await requestRef.delete().catch(() => {});
+    throw new HttpsError("internal", emailResult?.message || "Kunne ikke sende invitasjonen på e-post.");
+  }
+
+  await requestRef.update({
+    inviteEmailId: emailResult.id || null,
+    inviteEmailSentAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  return {
+    success: true,
+    requestId: requestRef.id,
+    email,
+    guardianName,
+    playerId,
+    playerName,
+    emailSent: true
+  };
+});
+
+
 exports.deleteGuardianAccount = onCall({
   region: "europe-west1",
   timeoutSeconds: 30
