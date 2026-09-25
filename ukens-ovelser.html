@@ -5,51 +5,116 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#07111d">
   <title>Treningsplanlegger · Samnanger G14</title>
-  <link rel="stylesheet" href="ukens-ovelser.css?v=20260902-1">
+  <link rel="stylesheet" href="ukens-ovelser.css?v=20260925-traininghub1">
 </head>
 <body>
   <main class="plannerShell">
     <header class="topbar">
-      <button class="backButton" type="button" onclick="history.back()">← Forsiden</button>
+      <button class="backButton" type="button" onclick="location.href='fremside.html'">← Forsiden</button>
       <div class="brand"><span>⚽</span><div><b>SAMNANGER</b><small>G14 · TRENER</small></div></div>
       <span id="saveStatus" class="saveStatus">Klar</span>
     </header>
+
     <section class="hero">
-      <div><span class="eyebrow">ØKTVERKTØY</span><h1>Trenings-<br><em>planlegger</em></h1><p>Planlegg, juster og gjenbruk økter uke for uke.</p></div>
-      <div class="duration"><b id="totalMinutes">90</b><span>minutter</span></div>
+      <div>
+        <span class="eyebrow">TRENING</span>
+        <h1>Trenings-<br><em>planlegger</em></h1>
+        <p>Bygg økter, publiser til spillerne og bruk ønskene deres når du planlegger.</p>
+      </div>
+      <button id="newSessionBtn" class="heroAction" type="button"><span>＋</span><b>Ny trening</b><small>Opprett en ny økt</small></button>
     </section>
-    <section class="weekbar">
-      <label>Velg uke<select id="weekSelect"></select></label>
-      <button id="newPlanBtn" class="secondary" type="button">Ny tom plan</button>
-      <a class="pdfLink" href="treningsokt_g14.pdf" target="_blank" rel="noopener">Åpne original PDF ↗</a>
-    </section>
-    <form id="planForm">
-      <section class="planCard introCard">
-        <div class="fieldGrid">
-          <label class="wide">Navn på økten<input id="titleInput" required></label>
-          <label>Dato<input id="dateInput" type="date"></label>
-          <label>Hovedfokus<input id="focusInput" placeholder="Hva skal laget utvikle?"></label>
-          <label class="wide">Beskjed før start<textarea id="introInput" rows="3" placeholder="Hva skal spillerne forstå før økten begynner?"></textarea></label>
+
+    <section class="workspace">
+      <aside class="sessionRail panel">
+        <div class="panelHead">
+          <div><span class="eyebrow">ØKTER</span><h2>Treninger</h2></div>
+          <button id="refreshSessionsBtn" class="iconButton" type="button" title="Oppdater">↻</button>
         </div>
+        <div class="filterRow">
+          <button class="filterChip active" data-filter="upcoming" type="button">Kommende</button>
+          <button class="filterChip" data-filter="all" type="button">Alle</button>
+          <button class="filterChip" data-filter="draft" type="button">Kladd</button>
+        </div>
+        <div id="sessionsList" class="sessionsList"><div class="emptyState">Laster treninger …</div></div>
+      </aside>
+
+      <section class="editor panel">
+        <div id="editorEmpty" class="editorEmpty">
+          <span>⚡</span><h2>Velg en trening</h2><p>Åpne en økt fra listen, eller opprett en ny.</p>
+        </div>
+
+        <form id="sessionForm" hidden>
+          <div class="editorTop">
+            <div>
+              <span id="publishBadge" class="statusBadge draft">KLADD</span>
+              <h2 id="editorHeading">Ny trening</h2>
+            </div>
+            <div class="editorActions">
+              <button id="duplicateBtn" class="secondary" type="button">⧉ Dupliser</button>
+              <button id="deleteBtn" class="danger" type="button">Slett</button>
+            </div>
+          </div>
+
+          <div class="fieldGrid">
+            <label class="wide">Navn på økten<input id="titleInput" required maxlength="120" placeholder="F.eks. Timing i løp og gjennombrudd"></label>
+            <label>Dato<input id="dateInput" type="date" required></label>
+            <label>Hovedfokus<input id="focusInput" maxlength="180" placeholder="Hva skal spillerne lære?"></label>
+            <label class="wide">Dette skal spillerne vite før trening<textarea id="introInput" rows="3" maxlength="800" placeholder="Kort beskjed som vises på spillernes Trening-side."></textarea></label>
+          </div>
+
+          <div class="sectionHeading">
+            <div><span>ØKTPLAN</span><h3>Øvelser og deler</h3></div>
+            <button id="addSectionBtn" class="secondary" type="button">＋ Legg til del</button>
+          </div>
+          <div id="sections"></div>
+
+          <div class="publishPanel">
+            <div>
+              <span class="eyebrow">SPILLERPORTAL</span>
+              <h3 id="publishTitle">Ikke publisert</h3>
+              <p id="publishText">Spillerne kan ikke se denne økten før du publiserer den.</p>
+            </div>
+            <div class="publishActions">
+              <button id="saveDraftBtn" class="secondary" type="submit">Lagre</button>
+              <button id="publishBtn" class="primary" type="button">Publiser til spillerne</button>
+            </div>
+          </div>
+        </form>
       </section>
-      <div class="sectionHeading"><div><span>ØKTPLAN</span><h2>Dagens deler</h2></div><button id="addSectionBtn" class="secondary" type="button">+ Legg til del</button></div>
-      <div id="sections"></div>
-      <div class="actions"><button id="saveBtn" class="primary" type="submit">Lagre treningsplan</button></div>
-    </form>
-    <section class="progressionCard">
-      <span class="eyebrow">PROGRESJON</span><h2>Plan for kommende uker</h2><textarea id="progressionInput" rows="6"></textarea>
+    </section>
+
+    <section class="wishes panel">
+      <div class="panelHead wishesHead">
+        <div><span class="eyebrow">FRA SPILLERNE</span><h2>Treningsønsker</h2><p>Forslag spillerne har sendt inn fra sin Trening-side.</p></div>
+        <span id="wishCount" class="countBadge">0 nye</span>
+      </div>
+      <div id="wishesList" class="wishesList"><div class="emptyState">Laster ønsker …</div></div>
     </section>
   </main>
+
   <template id="sectionTemplate">
     <article class="sessionPart">
       <div class="partNumber"></div>
       <div class="partBody">
-        <div class="partTop"><input class="partTitle" aria-label="Navn på øktdel" placeholder="Navn på øktdel" required><label class="minutes"><input class="partMinutes" type="number" min="0" max="180" value="10"> min</label><button class="removePart" type="button" title="Fjern denne delen">×</button></div>
-        <label>Gjennomføring<textarea class="partDetails" rows="3"></textarea></label>
-        <label>Coachingpunkter<textarea class="partCoaching" rows="3"></textarea></label>
+        <div class="partTop">
+          <input class="partTitle" aria-label="Navn på øktdel" placeholder="Navn på øvelsen" required maxlength="120">
+          <label class="minutes"><input class="partMinutes" type="number" min="0" max="180" value="10"> min</label>
+          <button class="movePart up" type="button" title="Flytt opp">↑</button>
+          <button class="movePart down" type="button" title="Flytt ned">↓</button>
+          <button class="removePart" type="button" title="Fjern denne delen">×</button>
+        </div>
+        <div class="partFields">
+          <label>Gjennomføring<textarea class="partDetails" rows="3" maxlength="1200" placeholder="Organisering og hva spillerne skal gjøre."></textarea></label>
+          <label>Coachingpunkter<textarea class="partCoaching" rows="3" maxlength="900" placeholder="Hva skal du coache på?"></textarea></label>
+        </div>
+        <label class="presentationField">Taktikktavle / presentasjon
+          <input class="partPresentation" type="url" placeholder="https://… (valgfritt)">
+          <small>Vises som «Åpne presentasjon» på spillernes side.</small>
+        </label>
       </div>
     </article>
   </template>
-  <script type="module" src="training-planner.js?v=20260902-1"></script>
+
+  <script type="module" src="training-planner.js?v=20260925-traininghub1"></script>
 </body>
 </html>
