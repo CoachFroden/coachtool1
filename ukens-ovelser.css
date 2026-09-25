@@ -8,3 +8,186 @@ button,input,select,textarea{font:inherit}.plannerShell{max-width:1320px;margin:
 .wishes{margin-top:18px;padding:20px}.wishesHead{align-items:flex-end}.countBadge{background:#ff9f4317;color:#ffc078}.wishesList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px}.wishCard{border:1px solid var(--line);border-radius:14px;padding:13px;background:#081722}.wishMeta{display:flex;align-items:center;justify-content:space-between;gap:8px}.wishMeta strong{font-size:12px}.wishMeta span{color:#7190a5;font-size:9px}.wishCategory{display:inline-block;margin-top:9px;padding:5px 7px;border-radius:999px;background:#55b9ff12;color:#7dccff;font-size:8px;font-weight:900}.wishCard p{margin:9px 0 12px;color:#c8d4dc;font-size:12px;line-height:1.5}.wishActions{display:flex;flex-wrap:wrap;gap:5px}.wishActions button{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#0d2230;color:#93a9b8;font-size:9px;font-weight:800;cursor:pointer}.wishActions button.active{border-color:#b6ff4245;color:var(--lime)}.emptyState{padding:24px 12px;text-align:center;color:#738b9c;font-size:11px}.loading{opacity:.6;pointer-events:none}
 @media(max-width:900px){.workspace{grid-template-columns:1fr}.sessionRail{position:static}.sessionsList{max-height:310px}.wishesList{grid-template-columns:1fr 1fr}}
 @media(max-width:650px){.plannerShell{padding:0 12px 55px}.topbar{grid-template-columns:1fr auto}.brand{display:none}.hero{min-height:220px}.heroAction{min-width:0;padding:14px}.heroAction small{display:none}.workspace{gap:10px}.sessionRail,.editor,.wishes{padding:14px}.fieldGrid,.partFields{grid-template-columns:1fr}.fieldGrid>*{grid-column:1}.sessionPart{grid-template-columns:1fr}.partNumber{width:34px;height:34px}.partTop{grid-template-columns:1fr 75px 32px 32px 32px}.editorTop,.publishPanel{align-items:flex-start;flex-direction:column}.editorActions,.publishActions{width:100%}.editorActions button,.publishActions button{flex:1}.wishesList{grid-template-columns:1fr}}
+
+
+/* 2026-09-25 compact training planner */
+[hidden]{display:none!important}
+
+.plannerShell{
+  max-width:1240px;
+  padding-bottom:55px;
+}
+
+.hero{
+  min-height:150px;
+  padding:18px 0 20px;
+}
+
+.hero h1{
+  font-size:clamp(38px,4.8vw,58px);
+  margin:8px 0 10px;
+}
+
+.hero p{
+  font-size:13px;
+  line-height:1.4;
+}
+
+.heroAction{
+  min-width:170px;
+  padding:14px 16px;
+  border-radius:16px;
+}
+
+.heroAction span{
+  width:38px;
+  height:38px;
+  margin-right:10px;
+  border-radius:11px;
+  font-size:21px;
+}
+
+.workspace{
+  grid-template-columns:290px minmax(0,1fr);
+  gap:12px;
+}
+
+.sessionRail{
+  padding:14px;
+}
+
+.editor{
+  min-height:0;
+  padding:17px;
+}
+
+.panel{
+  border-radius:16px;
+}
+
+.panelHead h2,
+.editorTop h2,
+.wishes h2{
+  font-size:23px;
+}
+
+.filterRow{
+  margin:12px 0 10px;
+}
+
+.sessionRow{
+  grid-template-columns:46px 1fr auto;
+  padding:7px;
+  border-radius:12px;
+}
+
+.sessionDate{
+  width:46px;
+  height:48px;
+  border-radius:10px;
+}
+
+.sessionDate b{
+  font-size:18px;
+}
+
+.editorEmpty{
+  min-height:300px;
+}
+
+.editorTop{
+  margin-bottom:4px;
+}
+
+.fieldGrid{
+  gap:10px;
+  margin-top:14px;
+}
+
+input,select,textarea{
+  margin-top:5px;
+  padding:9px 10px;
+}
+
+.sectionHeading{
+  margin:22px 0 9px;
+}
+
+.sectionHeading h3,
+.publishPanel h3{
+  font-size:19px;
+}
+
+.sessionPart{
+  grid-template-columns:38px 1fr;
+  gap:10px;
+  padding:12px;
+  margin-bottom:8px;
+  border-radius:13px;
+}
+
+.partNumber{
+  width:34px;
+  height:34px;
+  border-radius:9px;
+  font-size:15px;
+}
+
+.partTop{
+  grid-template-columns:1fr 78px 30px 30px 30px;
+  gap:6px;
+}
+
+.movePart,.removePart{
+  width:30px;
+  height:30px;
+  border-radius:8px;
+}
+
+.partBody>label,
+.partFields label{
+  margin-top:9px;
+}
+
+.publishPanel{
+  margin-top:16px;
+  padding:13px 14px;
+  border-radius:13px;
+}
+
+.primary,.secondary,.danger{
+  padding:9px 12px;
+  border-radius:9px;
+  font-size:12px;
+}
+
+.wishes{
+  margin-top:12px;
+  padding:16px;
+}
+
+.wishesList{
+  margin-top:12px;
+}
+
+@media(max-width:900px){
+  .hero{min-height:135px}
+  .workspace{grid-template-columns:1fr}
+  .sessionRail{position:static}
+}
+
+@media(max-width:650px){
+  .hero{
+    min-height:125px;
+    align-items:flex-start;
+  }
+  .hero h1{
+    font-size:40px;
+  }
+  .heroAction{
+    margin-top:4px;
+  }
+  .editor{
+    padding:13px;
+  }
+}
