@@ -172,10 +172,12 @@ loginBtn.onclick = async () => {
       return;
     }
 
+    console.info("[Auth] Innlogging godkjent", { uid: cred.user.uid, role: data.role });
     routeByRole(data.role);
   } catch (err) {
     manualLoginInProgress = false;
-    setError("Feil e-post eller passord.");
+    console.error("[Auth] Innlogging feilet:", err.code, err);
+    setError(["auth/invalid-credential", "auth/wrong-password", "auth/user-not-found"].includes(err.code) ? "Feil e-post eller passord." : `Innloggingen feilet (${err.code || "ukjent feil"}). Prøv igjen.`);
   }
 };
 
