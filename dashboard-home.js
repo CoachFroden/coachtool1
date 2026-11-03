@@ -34,14 +34,17 @@ logoutBtn?.addEventListener("click", async () => {
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
+    console.warn("[Auth:dashboard-home] Ingen innlogget Firebase-bruker; sender til innlogging.");
     window.location.href = "index.html";
     return;
   }
 
-  const snap = await getDoc(doc(db, "users", user.uid));
+  let snap;
+  try { snap = await getDoc(doc(db, "users", user.uid)); }
+  catch (error) { console.error("[Auth:fremside] Kunne ikke lese brukerprofil", error); if (userLine) userLine.textContent = "Kunne ikke kontrollere tilgangen. Last siden på nytt."; return; }
   if (!snap.exists() || snap.data()?.role !== "coach") {
-    await signOut(auth);
-    window.location.href = "index.html";
+    console.error("[Auth:fremside] Manglende/ugyldig coach-rolle", { uid: user.uid, profileExists: snap.exists(), role: snap.data()?.role });
+    if (userLine) userLine.textContent = "Ingen tilgang: trenerrolle mangler. Kontakt administrator.";
     return;
   }
 
