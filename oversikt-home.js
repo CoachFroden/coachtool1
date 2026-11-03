@@ -225,8 +225,8 @@ async function initForUser(user) {
   const userSnap = await getDoc(doc(db, "users", user.uid));
   const role = userSnap.exists() ? userSnap.data()?.role : null;
   if (role !== "coach" && role !== "assistantCoach") {
-    await signOut(auth);
-    window.location.href = "index.html";
+    console.error("[Auth:oversikt] Manglende/ugyldig rolle", { uid: user.uid, role, profileExists: userSnap.exists() });
+    els.errorMsg.textContent = "Brukerprofilen mangler gyldig trenerrolle. Kontakt administrator.";
     return;
   }
 
@@ -263,6 +263,7 @@ els.statsBtn.onclick = () => window.location.href = "statistikk.html";
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
+    console.warn("[Auth:oversikt-home] Ingen innlogget Firebase-bruker; sender til innlogging.");
     window.location.href = "index.html";
     return;
   }
