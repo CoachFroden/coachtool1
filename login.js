@@ -5,7 +5,9 @@ import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
 import {
@@ -147,6 +149,7 @@ loginBtn.onclick = async () => {
   manualLoginInProgress = true;
 
   try {
+    await setPersistence(auth, browserLocalPersistence);
     const cred = await signInWithEmailAndPassword(auth, email, pass);
 
     const snap = await getDoc(doc(db, "users", cred.user.uid));
