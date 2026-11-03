@@ -121,11 +121,15 @@ matchSelect?.addEventListener("change", () => {
 });
 
 onAuthStateChanged(auth, async user => {
-  if (!user) { location.href = "index.html"; return; }
+  if (!user) {
+    console.warn("[Auth:statistikk] Ingen innlogget Firebase-bruker; sender til innlogging.");
+    window.location.href = "index.html";
+    return;
+  }
   try {
     const profile = await getDoc(doc(db, "users", user.uid));
     const role = profile.exists() ? profile.data()?.role : null;
-    if (role !== "coach" && role !== "assistantCoach") { await signOut(auth); location.href = "index.html"; return; }
+    if (role !== "coach" && role !== "assistantCoach") { console.error("[Auth:statistikk] Manglende/ugyldig rolle", { uid: user.uid, role, profileExists: profile.exists() }); errorMsg.textContent = "Brukerprofilen mangler gyldig trenerrolle. Kontakt administrator."; return; }
     const snap = await getDocs(query(collection(db, "matches"), limit(100)));
     allMatches = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
