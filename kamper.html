@@ -13,14 +13,16 @@
   <header class="pageHeader">
     <button class="back-btn" type="button" onclick="goBack()" aria-label="Gå tilbake">←</button>
     <div class="headerText">
-      <span class="eyebrow">SAMNANGER G14</span>
+      <span class="eyebrow" id="seasonHeading">SAMNANGER G14</span>
       <h1>Kamper</h1>
       <p>Neste kamp og kommende kampplan</p>
     </div>
     <div class="headerActions"><button id="newMatchBtn" class="newMatchBtn" type="button">+ Ny kamp</button><a class="overviewLink" href="oversikt.html">Oversikt</a></div>
   </header>
 
-  <main class="pageShell">
+  <main class="pageShell"><div id="seasonNotice" style="padding:12px 18px;border:1px solid #466787;border-radius:12px;margin-bottom:16px;color:#dceeff"></div>
+    <p id="seasonStatsLink" hidden><a href="statistikk.html?season=2027" style="color:#8bd6ff;font-weight:700">📊 Sesongstatistikk G14 2027 (test)</a></p>
+    <p id="lineupTestLink" hidden><a href="lagoppstilling-2027-test.html" style="color:#8bd6ff;font-weight:700">⚽ Test lagoppstilling med spillerstallen fra Firebase (uten å opprette kamp)</a></p>
     <section class="nextSection" aria-labelledby="nextHeading">
       <div class="sectionHeader">
         <div>
@@ -144,6 +146,15 @@
     </section>
   </div>
 
+  <script>
+    const is2027 = new URLSearchParams(location.search).get("season")==="2027";
+    document.getElementById("seasonHeading").textContent="SAMNANGER G14 · "+(is2027?"2027":"2026 / EKSISTERENDE");
+    document.getElementById("seasonNotice").textContent=is2027?"FORHÅNDSVISNING 2027: Bare kamper merket med 2027-sesongen vises. Spillerstallen hentes fra Firebase. Andre verktøy er ikke sesongtilpasset ennå.":"EKSISTERENDE KAMPPLAN: Viser eldre kamper uten sesongmerking. For 2027, bruk egen testlenke fra forsiden.";
+    document.getElementById("lineupTestLink").hidden=!is2027;
+    document.getElementById("seasonStatsLink").hidden=!is2027;
+    if(is2027)document.getElementById("newMatchDate").min="2027-01-01";
+    if(is2027)document.getElementById("newMatchDate").max="2027-12-31";
+  </script>
   <script type="module">
     import { auth } from "./firebase-refleksjon.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
@@ -159,7 +170,7 @@
     if (!user) {
       window.location.href = "index.html";
     } else {
-      await import("./kamper.js?v=20260921-active1");
+      await import("./kamper.js?v=20261108-season1");
       await import("./lineup-ui.js?v=20260920-lineupfix4");
       await import("./match-admin-links.js?v=20260920-live2");
       await import("./kamper-time-consistency.js?v=20260916-2");

@@ -2,6 +2,7 @@ import { auth, db } from "./firebase-refleksjon.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import { collection, doc, getDoc, getDocs, limit, query } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
+const season2027 = new URLSearchParams(location.search).get("season") === "2027";
 const summary = document.getElementById("summary");
 const goalSummary = document.getElementById("goalSummary");
 const playerStats = document.getElementById("playerStats");
@@ -9,7 +10,7 @@ const errorMsg = document.getElementById("errorMsg");
 const matchSelect = document.getElementById("matchSelect");
 const statsTitle = document.getElementById("statsTitle");
 
-document.getElementById("backBtn").onclick = () => location.href = "oversikt.html";
+document.getElementById("backBtn").onclick = () => location.href = season2027 ? "kamper.html?season=2027" : "oversikt.html";
 document.getElementById("logoutBtn").onclick = async () => {
   await signOut(auth);
   location.href = "index.html";
@@ -100,7 +101,7 @@ function populateMatchSelect(matches) {
 }
 
 function showSeason() {
-  statsTitle.textContent = "Sesongstatistikk";
+  statsTitle.textContent = season2027 ? "Sesongstatistikk · G14 2027" : "Sesongstatistikk · eksisterende historikk";
   render(buildStats(allMatches));
 }
 
@@ -134,6 +135,7 @@ onAuthStateChanged(auth, async user => {
     allMatches = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .filter(m => String(m.status || "").toUpperCase() === "ENDED")
+      .filter(m => season2027 ? m.seasonId === "samnanger-g14-2027" : !m.seasonId || m.seasonId === "samnanger-g14-2026")
       .sort((a,b) => String(b?.meta?.date || "").localeCompare(String(a?.meta?.date || "")));
     populateMatchSelect(allMatches);
     showSeason();

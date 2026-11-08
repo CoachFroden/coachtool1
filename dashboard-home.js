@@ -12,6 +12,24 @@ import {
   getDocs
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
+
+const seasonChoice = document.getElementById("seasonChoice");
+const activeTeamLabel = document.getElementById("activeTeamLabel");
+const seasonChoiceInfo = document.getElementById("seasonChoiceInfo");
+// To forskjellige G14-spillerstaller: sesong er en del av identiteten,
+// ikke bare en statistikkperiode. Ikke koble gamle globale Firestore-data
+// til nytt lag før migrering og tilgangsregler er ferdig.
+function updateSeasonPreview() {
+  const year = seasonChoice?.value === "2027" ? "2027" : "2026";
+  if (activeTeamLabel) activeTeamLabel.textContent = "SAMNANGER G14 · " + year;
+  const info = document.getElementById("seasonChoiceInfo");
+  if (info) info.textContent = year === "2026"
+    ? "G14 2026: tidligere spillerstall. Sesongvalget er foreløpig kun en forhåndsvisning; verktøyene viser fortsatt eksisterende data."
+    : "G14 2027: ny spillerstall, med mulighet for spillere som fortsetter fra 2026. Sesongvalget er foreløpig kun en forhåndsvisning; verktøyene er ennå ikke filtrert.";
+}
+seasonChoice?.addEventListener("change", updateSeasonPreview);
+updateSeasonPreview();
+
 const userLine = document.getElementById("userLine");
 const logoutBtn = document.getElementById("logoutBtn");
 const openOverviewBtn = document.getElementById("openOverviewBtn");

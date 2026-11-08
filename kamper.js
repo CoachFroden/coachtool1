@@ -23,6 +23,8 @@ let selectedPlayerName = null;
 let selectedLineupPlayer = null;
 let activeMatchId = null;
 let userRole = null;
+const season2027 = new URLSearchParams(location.search).get("season") === "2027";
+const SEASON_ID = "samnanger-g14-2027";
 
 let activePlayer = null;
 let activeElement = null;
@@ -238,6 +240,7 @@ function isLiveMatchStatus(status) {
 }
 
 function openLiveMatch(matchId) {
+  if(season2027){alert("Kampgjennomføring for 2027 er ikke ferdig sesongtilpasset ennå.");return;}
   window.location.href = `kamp.html?matchId=${encodeURIComponent(matchId)}`;
 }
 
@@ -396,6 +399,7 @@ function closeNewMatchModal(){
 }
 async function createMatch(e){
   e.preventDefault();
+  if(season2027){alert("Oppretting av 2027-kamper er midlertidig sperret til kampregistrering og statistikk er ferdig sesongtilpasset. Ingen data er endret.");return;}
   const opponent=document.getElementById("newMatchOpponent").value.trim();
   const date=document.getElementById("newMatchDate").value;
   const time=document.getElementById("newMatchTime").value;
@@ -403,9 +407,10 @@ async function createMatch(e){
   const venueName=document.getElementById("newMatchVenue").value.trim();
   const type=document.getElementById("newMatchType").value.trim()||"Seriekamp";
   if(!opponent||!date||!time) return;
+  if(season2027 && !date.startsWith("2027-")){alert("Velg en dato i 2027 for denne sesongen.");return;}
   const btn=document.getElementById("saveNewMatch");btn.disabled=true;btn.textContent="Lagrer…";
   try{
-    await addDoc(collection(db,"matches"),{meta:{ourTeam:"Samnanger",opponent,date,time,startTime:time,venueType,venueName,type},createdAt:serverTimestamp(),createdBy:auth.currentUser?.uid||null});
+    await addDoc(collection(db,"matches"),{meta:{ourTeam:"Samnanger",opponent,date,time,startTime:time,venueType,venueName,type},...(season2027?{teamId:"samnanger-g14",seasonId:SEASON_ID,year:2027}:{}),createdAt:serverTimestamp(),createdBy:auth.currentUser?.uid||null});
     closeNewMatchModal();
     await loadMatches();
   }catch(err){console.error("createMatch:",err);alert("Kunne ikke opprette kampen: "+(err.message||"ukjent feil"))}
@@ -440,6 +445,17 @@ playersSnap.forEach((docSnap) => {
     });
   }
 });
+
+  if(season2027){
+    const rosterSnap=await getDoc(doc(db,"seasonRosters",SEASON_ID));
+    if(!rosterSnap.exists()) throw new Error("2027-spillerstallen er ikke lagret i Firebase.");
+    const roster=rosterSnap.data();
+    const ids=new Set(Array.isArray(roster.playerIds)?roster.playerIds:[]);
+    squad=squad.filter(p=>ids.has(p.id));
+    for(const p of (Array.isArray(roster.newPlayers)?roster.newPlayers:[])){
+      if(p&&p.id&&p.name&&!squad.some(x=>x.id===p.id))squad.push({id:p.id,name:p.name,isLoan:false,present:true});
+    }
+  }
 
   // 🔥 lån
   if (matchId) {
@@ -645,6 +661,10 @@ function setupModalHandlers() {
 }
 
 async function openPitchModal(match) {
+  if(season2027){
+    const check=await getDoc(doc(db,"matches",match.id));
+    if(!check.exists()||check.data().seasonId!==SEASON_ID){alert("Kampen tilhører ikke G14 2027.");return;}
+  }
   activeMatchId = match.id;
   let initializedDefaultLineup = false;
 
@@ -1124,6 +1144,8 @@ async function loadMatches() {
     snap.forEach((docSnap) => {
       const data = docSnap.data();
       const meta = data.meta || {};
+      if(season2027){if(data.seasonId!==SEASON_ID)return;}
+      else if(data.seasonId && data.seasonId!== "samnanger-g14-2026")return;
       const status = String(data.status || meta.status || "").trim().toUpperCase();
       const live = isLiveMatchStatus(status);
 
@@ -1352,8 +1374,9 @@ if (matchId && openLineup) {
   const snap = await getDoc(doc(db, "matches", matchId));
   if (snap.exists()) {
     const data = snap.data();
-
-    openPitchModal({
+    if(season2027 && data.seasonId!==SEASON_ID){alert("Kampen tilhører ikke G14 2027.");}
+    else if(!season2027 && data.seasonId && data.seasonId!=="samnanger-g14-2026"){alert("Denne kampen tilhører en annen sesong.");}
+    else openPitchModal({
       id: matchId,
       opponent: data.meta?.opponent,
       date: data.meta?.date,

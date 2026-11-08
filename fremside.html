@@ -16,10 +16,30 @@
 <body>
   <main class="dashboardShell">
     <header class="dashboardHeader">
-      <div><p class="eyebrow">SAMNANGER G14</p><h1>Coach</h1><p id="userLine" class="userLine">Laster…</p></div>
+      <div><p class="eyebrow"><span id="activeTeamLabel">SAMNANGER G14 · 2026</span></p><h1>Coach</h1><p id="userLine" class="userLine">Laster…</p></div>
       <button id="logoutBtn" class="logoutButton" type="button">Logg ut</button>
     </header>
 
+<section class="seasonSwitcher" aria-label="Lag og sesong">
+  <div class="seasonSwitcherHead"><strong>Lag og sesong</strong><span>FORHÅNDSVISNING</span></div>
+  <div class="seasonSwitcherControls">
+    <label>Lag<select id="teamChoice"><option value="samnanger-g14">Samnanger G14</option></select></label>
+    <label>Sesong<select id="seasonChoice"><option value="2026">2026 – tidligere G14</option><option value="2027">2027 – nytt G14</option></select></label>
+  </div>
+  <p id="seasonChoiceInfo" class="seasonSwitcherInfo" role="status"></p>
+  <a href="spillerstall-preview.html">Administrer spillerstall 2027 (test)</a> · <a href="kamper.html?season=2027">Kamper G14 2027 (test)</a> · <a href="sesonger-demo.html">Lag og sesonger (demo)</a>
+</section>
+<style>
+.seasonSwitcher{margin:0 0 18px;padding:17px;background:#10243a;border:1px solid #2d4966;border-radius:17px;color:#e9f4ff}
+.seasonSwitcherHead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:13px}
+.seasonSwitcherHead span{font-size:10px;letter-spacing:.09em;color:#9ebbd5}
+.seasonSwitcherControls{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seasonSwitcherControls label{display:grid;gap:6px;color:#a7c4df;font-size:12px}
+.seasonSwitcherControls select{width:100%;min-width:0;padding:12px;background:#091a2d;color:#fff;border:1px solid #41627e;border-radius:10px;font:inherit}
+.seasonSwitcherInfo{font-size:12px;line-height:1.5;color:#f6cb84;margin:12px 0 8px}
+.seasonSwitcher a{font-size:12px;color:#87d8ff}
+@media(max-width:540px){.seasonSwitcherControls{grid-template-columns:1fr}}
+</style>
     <section class="welcomeCard" aria-labelledby="overviewHeading">
       <div class="welcomeGlow"></div>
       <div class="welcomeContent"><span class="statusPill"><i></i> KAMP</span><h2 id="overviewHeading">Klar for neste kamp?</h2><p>Se neste kamp, lagoppstilling, kampstart, kommende kamper og siste resultat.</p></div>
@@ -54,6 +74,6 @@
 
     <footer class="dashboardFooter">COACH TOOL · 2026</footer>
   </main>
-  <script type="module" src="dashboard-home.js?v=20260920-1800"></script>
+  <script type="module" src="dashboard-home.js?v=20261108-seasons1"></script>
 </body>
 </html>
