@@ -1,9 +1,9 @@
 import {auth,db} from "./firebase-refleksjon.js";
 import {onAuthStateChanged} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-import {collection,doc,getDoc,getDocs} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import {collection,doc,getDoc,getDocs,setDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 const $=id=>document.getElementById(id);
 const KEY="coachtool:preview:roster:samnanger-g14:2027:v1";
-let source=[],selected=new Set(),added=[],loaded=false,year="2027";
+let source=[],selected=new Set(),added=[],loaded=false,year="2027",coachUid=null;
 function save(){localStorage.setItem(KEY,JSON.stringify({ids:[...selected],added}));}
 function restore(){try{const d=JSON.parse(localStorage.getItem(KEY)||"null");if(d){selected=new Set(Array.isArray(d.ids)?d.ids:[]);added=Array.isArray(d.added)?d.added.filter(p=>p&&typeof p.name==="string"):[];}}catch{}}
 function element(tag,content,cls){const el=document.createElement(tag);if(content!==undefined)el.textContent=content;if(cls)el.className=cls;return el;}
@@ -37,7 +37,26 @@ onAuthStateChanged(auth,async user=>{
   if(!profile.exists()||profile.data().role!=="coach"){$("status").textContent="Kun trenere har tilgang til denne forhåndsvisningen.";return;}
   const snap=await getDocs(collection(db,"spillere"));
   source=snap.docs.map(d=>({id:d.id,name:String(d.data().navn||d.data().name||d.id)})).sort((a,b)=>a.name.localeCompare(b.name,"no"));
-  loaded=true;$("status").textContent="Spillere hentet. Ingen data er endret i Firebase.";render();
+  coachUid=user.uid;loaded=true;$("status").textContent="Spillere hentet. Ingen data er endret i Firebase.";render();
  }catch(err){$("status").textContent="Kunne ikke hente spillerlisten: "+(err.code||err.message);}
 });
 render();
+
+$("saveFirebase").addEventListener("click",async()=>{
+ const status=$("saveStatus");status.textContent="";
+ if(!coachUid||!loaded){status.textContent="Spillerlisten er ikke ferdig lastet.";return;}
+ if(year!=="2027"){status.textContent="Bare 2027-stallen kan lagres her.";return;}
+ if(!confirm("Lagre valgt spillerstall for G14 2027 i Firebase? Dette endrer ikke 2026."))return;
+ const btn=$("saveFirebase");btn.disabled=true;status.textContent="Lagrer …";
+ try{
+  const playerIds=[...selected].filter(id=>source.some(p=>p.id===id));
+  const newPlayers=added.map(p=>({id:p.id,name:p.name}));
+  await setDoc(doc(db,"seasonRosters","samnanger-g14-2027"),{
+   teamId:"samnanger-g14",seasonId:"samnanger-g14-2027",year:2027,
+   playerIds,newPlayers,updatedBy:coachUid,updatedAt:serverTimestamp()
+  });
+  status.textContent="Lagret i Firebase: "+(playerIds.length+newPlayers.length)+" spillere.";
+ }catch(err){
+  status.textContent="Ikke lagret i Firebase: "+(err.code||err.message)+". Valgene er fortsatt lagret lokalt.";
+ }finally{btn.disabled=false;}
+});
