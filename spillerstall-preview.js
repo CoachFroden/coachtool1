@@ -37,7 +37,7 @@ onAuthStateChanged(auth,async user=>{
   if(!profile.exists()||profile.data().role!=="coach"){$("status").textContent="Kun trenere har tilgang til denne forhåndsvisningen.";return;}
   const snap=await getDocs(collection(db,"spillere"));
   source=snap.docs.map(d=>({id:d.id,name:String(d.data().navn||d.data().name||d.id)})).sort((a,b)=>a.name.localeCompare(b.name,"no"));
-  coachUid=user.uid;loaded=true;$("status").textContent="Spillere hentet. Ingen data er endret i Firebase.";render();
+  coachUid=user.uid;loaded=true;$("loadFirebase").disabled=false;$("status").textContent="Spillere hentet. Ingen data er endret i Firebase.";render();
  }catch(err){$("status").textContent="Kunne ikke hente spillerlisten: "+(err.code||err.message);}
 });
 render();
@@ -59,4 +59,23 @@ $("saveFirebase").addEventListener("click",async()=>{
  }catch(err){
   status.textContent="Ikke lagret i Firebase: "+(err.code||err.message)+". Valgene er fortsatt lagret lokalt.";
  }finally{btn.disabled=false;}
+});
+
+$("loadFirebase").addEventListener("click",async()=>{
+ const btn=$("loadFirebase"),status=$("loadStatus");btn.disabled=true;status.textContent="Henter fra Firebase …";
+ try{
+  const snap=await getDoc(doc(db,"seasonRosters","samnanger-g14-2027"));
+  if(!snap.exists()){status.textContent="Ingen lagret 2027-stall funnet i Firebase.";return;}
+  const data=snap.data(),ids=Array.isArray(data.playerIds)?data.playerIds:[],fresh=Array.isArray(data.newPlayers)?data.newPlayers:[];
+  const validIds=ids.filter(id=>source.some(p=>p.id===id));
+  const missing=ids.length-validIds.length;
+  status.textContent="Hentet fra Firebase: "+ids.length+" videreførte + "+fresh.length+" nye = "+(ids.length+fresh.length)+" spillere."+(missing?" "+missing+" ID-er finnes ikke i eksisterende spillerliste.":"");
+  const localIds=[...selected].sort(),remoteIds=[...validIds].sort();
+  const same=JSON.stringify(localIds)===JSON.stringify(remoteIds)&&JSON.stringify(added)===JSON.stringify(fresh);
+  if(same){status.textContent+=" Stemmer med spillerstallen på skjermen.";return;}
+  if(!confirm("Firebase-stallen er forskjellig fra lokale valg. Vil du vise den lagrede Firebase-stallen? Dette erstatter bare lokale testvalg, ikke Firebase-data."))return;
+  selected=new Set(validIds);added=fresh.filter(p=>p&&typeof p.id==="string"&&typeof p.name==="string");
+  save();render();status.textContent+=" Lagret stall er nå vist på skjermen.";
+ }catch(err){status.textContent="Kunne ikke hente fra Firebase: "+(err.code||err.message);}
+ finally{btn.disabled=false;}
 });
