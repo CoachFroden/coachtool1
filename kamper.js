@@ -240,6 +240,7 @@ function isLiveMatchStatus(status) {
 }
 
 function openLiveMatch(matchId) {
+  if(season2027){alert("Kampgjennomføring for 2027 er ikke ferdig sesongtilpasset ennå.");return;}
   window.location.href = `kamp.html?matchId=${encodeURIComponent(matchId)}`;
 }
 
@@ -398,6 +399,7 @@ function closeNewMatchModal(){
 }
 async function createMatch(e){
   e.preventDefault();
+  if(season2027){alert("Oppretting av 2027-kamper er midlertidig sperret til kampregistrering og statistikk er ferdig sesongtilpasset. Ingen data er endret.");return;}
   const opponent=document.getElementById("newMatchOpponent").value.trim();
   const date=document.getElementById("newMatchDate").value;
   const time=document.getElementById("newMatchTime").value;
@@ -659,6 +661,10 @@ function setupModalHandlers() {
 }
 
 async function openPitchModal(match) {
+  if(season2027){
+    const check=await getDoc(doc(db,"matches",match.id));
+    if(!check.exists()||check.data().seasonId!==SEASON_ID){alert("Kampen tilhører ikke G14 2027.");return;}
+  }
   activeMatchId = match.id;
   let initializedDefaultLineup = false;
 
@@ -1368,8 +1374,9 @@ if (matchId && openLineup) {
   const snap = await getDoc(doc(db, "matches", matchId));
   if (snap.exists()) {
     const data = snap.data();
-
-    openPitchModal({
+    if(season2027 && data.seasonId!==SEASON_ID){alert("Kampen tilhører ikke G14 2027.");}
+    else if(!season2027 && data.seasonId && data.seasonId!=="samnanger-g14-2026"){alert("Denne kampen tilhører en annen sesong.");}
+    else openPitchModal({
       id: matchId,
       opponent: data.meta?.opponent,
       date: data.meta?.date,
