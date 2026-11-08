@@ -33,6 +33,26 @@ service cloud.firestore {
         && playerAccount().data.playerId != null;
     }
 
+    // Sesongstaller – bare innlogget hovedtrener kan administrere.
+    // Eksisterende 2026-data og spillerprofiler endres ikke.
+    match /seasonRosters/{rosterId} {
+      allow read: if isCoach();
+      allow create, update: if isCoach()
+        && rosterId == "samnanger-g14-2027"
+        && request.resource.data.teamId == "samnanger-g14"
+        && request.resource.data.seasonId == "samnanger-g14-2027"
+        && request.resource.data.year == 2027
+        && request.resource.data.playerIds is list
+        && request.resource.data.playerIds.size() <= 100
+        && request.resource.data.newPlayers is list
+        && request.resource.data.newPlayers.size() <= 100
+        && request.resource.data.keys().hasOnly([
+          'teamId', 'seasonId', 'year', 'playerIds', 'newPlayers', 'updatedBy', 'updatedAt'
+        ])
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if false;
+    }
+
     // =====================================================
     // PASSWORD REQUESTS
     // =====================================================
